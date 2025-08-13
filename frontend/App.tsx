@@ -1,0 +1,99 @@
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { StatusBar } from 'expo-status-bar';
+import { StyleSheet, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
+// Screens
+import LoginScreen from './src/screens/LoginScreen';
+import SignUpScreen from './src/screens/SignUpScreen';
+import HomeScreen from './src/screens/HomeScreen';
+// import other screens as needed
+import CustomTabBar from './src/components/CustomTabBar';
+import ChatbotWrapper from './src/components/ChatbotWrapper';
+import HotelSearchScreen from './src/screens/HotelSearchScreen';
+import TransportSearchScreen from './src/screens/TransportSearchScreen';
+import TourSearchScreen from './src/screens/TourSearchScreen';
+import PlanScreen from './src/screens/PlanScreen';
+import ReelsScreen from './src/screens/ReelsScreen';
+import BookingScreen from './src/screens/BookingScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
+import SearchHotelResultScreen from './src/screens/SearchHotelResultScreen';
+import HotelDetailScreen from './src/screens/HotelDetailScreen';
+import SearchTransportResultScreen from './src/screens/SearchTransportResultScreen';
+import SearchTourResultScreen from './src/screens/SearchTourResultScreen';
+import DetailScreen from './src/screens/DetailScreen';
+
+// Context
+import { AuthProvider, useAuth } from './src/context/AuthContext';
+
+const Stack = createStackNavigator();
+const Tab = createBottomTabNavigator();
+
+function MainTabs() {
+  return (
+    <View style={{ flex: 1 }}>
+      <Tab.Navigator screenOptions={{ headerShown: false }} tabBar={props => <CustomTabBar {...props} />}>
+        <Tab.Screen name="Home" component={HomeScreen} />
+        <Tab.Screen name="Plan" component={PlanScreen} />
+        <Tab.Screen name="Reels" component={ReelsScreen} />
+        <Tab.Screen name="Booking" component={BookingScreen} />
+        <Tab.Screen name="Profile" component={ProfileScreen} />
+      </Tab.Navigator>
+      <ChatbotWrapper />
+    </View>
+  );
+}
+
+function RootNavigator() {
+  const { isAuthenticated } = useAuth();
+  
+  return (
+    <View style={{ flex: 1 }}>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {!isAuthenticated ? (
+          <>
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="SignUp" component={SignUpScreen} />
+          </>
+        ) : (
+          <>
+            <Stack.Screen name="Main" component={MainTabs} />
+            <Stack.Screen name="HotelSearch" component={HotelSearchScreen} />
+            <Stack.Screen name="TransportSearch" component={TransportSearchScreen} />
+            <Stack.Screen name="TourSearch" component={TourSearchScreen} />
+            <Stack.Screen name="SearchHotelResult" component={SearchHotelResultScreen} />
+            <Stack.Screen name="HotelDetail" component={HotelDetailScreen} />
+            <Stack.Screen name="SearchTransportResult" component={SearchTransportResultScreen} />
+            <Stack.Screen name="SearchTourResult" component={SearchTourResultScreen} />
+            <Stack.Screen name="DetailScreen" component={DetailScreen} />
+          </>
+        )}
+      </Stack.Navigator>
+    </View>
+  );
+}
+
+export default function App() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <NavigationContainer>
+          <StatusBar />
+          <RootNavigator />
+        </NavigationContainer>
+      </AuthProvider>
+    </GestureHandlerRootView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
