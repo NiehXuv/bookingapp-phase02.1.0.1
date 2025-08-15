@@ -3,6 +3,7 @@ import { View, TouchableOpacity, StyleSheet, Dimensions, Alert, Animated } from 
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { Wand2 } from 'lucide-react-native';
 import ChatbotModal from './ChatbotModal';
+import { useRoute } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -12,10 +13,29 @@ interface ChatbotFABProps {
 }
 
 const ChatbotFAB: React.FC<ChatbotFABProps> = ({ onPress, isVisible = true }) => {
-  const [position, setPosition] = useState({
-    x: width - 80,
-    y: height - 200,
-  });
+  const route = useRoute();
+  
+  // Check if current screen is a detail screen
+  const isDetailScreen = route?.name?.includes('Detail') || false;
+  
+  // Adjust positioning based on screen type
+  const getInitialPosition = () => {
+    if (isDetailScreen) {
+      // For detail screens, position higher to avoid tab bar overlap
+      return {
+        x: width - 80,
+        y: height - 120, // Higher position for detail screens
+      };
+    } else {
+      // For other screens, use standard position
+      return {
+        x: width - 80,
+        y: height - 200,
+      };
+    }
+  };
+
+  const [position, setPosition] = useState(getInitialPosition());
   
   const scaleAnim = useState(new Animated.Value(1))[0];
   const translateX = useRef(new Animated.Value(0)).current;
@@ -46,6 +66,11 @@ const ChatbotFAB: React.FC<ChatbotFABProps> = ({ onPress, isVisible = true }) =>
     }
   }, [isVisible]);
 
+  // Update position when route changes
+  useEffect(() => {
+    setPosition(getInitialPosition());
+  }, [route?.name]);
+
   const handlePress = () => {
     setModalVisible(true);
     if (onPress) {
@@ -59,7 +84,13 @@ const ChatbotFAB: React.FC<ChatbotFABProps> = ({ onPress, isVisible = true }) =>
     
     // Calculate new position based on initial position + translation
     const newX = Math.max(0, Math.min(width - 60, position.x + translationX));
-    const newY = Math.max(0, Math.min(height - 60, position.y + translationY));
+    
+    // Adjust Y boundary based on screen type
+    let maxY = height - 60;
+    if (isDetailScreen) {
+      maxY = height - 80; // Allow moving lower on detail screens
+    }
+    const newY = Math.max(100, Math.min(maxY, position.y + translationY));
     
     // Update animated values for smooth movement
     translateX.setValue(translationX);
@@ -88,7 +119,11 @@ const ChatbotFAB: React.FC<ChatbotFABProps> = ({ onPress, isVisible = true }) =>
       if (newY < snapThreshold) {
         newY = 100;
       } else if (newY > height - snapThreshold - 60) {
-        newY = height - 200;
+        if (isDetailScreen) {
+          newY = height - 100; // Lower snap position for detail screens
+        } else {
+          newY = height - 200; // Standard snap position for other screens
+        }
       }
       
       // Update position and reset animated values

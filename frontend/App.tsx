@@ -16,18 +16,20 @@ import ChatbotWrapper from './src/components/ChatbotWrapper';
 import HotelSearchScreen from './src/screens/HotelSearchScreen';
 import TransportSearchScreen from './src/screens/TransportSearchScreen';
 import TourSearchScreen from './src/screens/TourSearchScreen';
-import PlanScreen from './src/screens/PlanScreen';
+import PlanScreen from './src/screens/ExploreScreen';
 import ReelsScreen from './src/screens/ReelsScreen';
 import BookingScreen from './src/screens/BookingScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import SearchHotelResultScreen from './src/screens/SearchHotelResultScreen';
 import HotelDetailScreen from './src/screens/HotelDetailScreen';
+import PlaceDetailScreen from './src/screens/PlaceDetailScreen';
 import SearchTransportResultScreen from './src/screens/SearchTransportResultScreen';
 import SearchTourResultScreen from './src/screens/SearchTourResultScreen';
 import DetailScreen from './src/screens/DetailScreen';
 
 // Context
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { ContentProvider } from './src/context/ContentContext';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -65,7 +67,8 @@ function RootNavigator() {
             <Stack.Screen name="TransportSearch" component={TransportSearchScreen} />
             <Stack.Screen name="TourSearch" component={TourSearchScreen} />
             <Stack.Screen name="SearchHotelResult" component={SearchHotelResultScreen} />
-            <Stack.Screen name="HotelDetail" component={HotelDetailScreen} />
+            <Stack.Screen name="HotelDetailScreen" component={HotelDetailScreen as any} />
+            <Stack.Screen name="PlaceDetailScreen" component={PlaceDetailScreen as any} />
             <Stack.Screen name="SearchTransportResult" component={SearchTransportResultScreen} />
             <Stack.Screen name="SearchTourResult" component={SearchTourResultScreen} />
             <Stack.Screen name="DetailScreen" component={DetailScreen} />
@@ -80,10 +83,12 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
-        <NavigationContainer>
-          <StatusBar />
-          <RootNavigator />
-        </NavigationContainer>
+        <ContentProvider>
+          <NavigationContainer>
+            <StatusBar />
+            <RootNavigator />
+          </NavigationContainer>
+        </ContentProvider>
       </AuthProvider>
     </GestureHandlerRootView>
   );

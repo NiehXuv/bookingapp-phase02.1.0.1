@@ -14,78 +14,69 @@ import {
 } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { EnhancedHotel } from '../types/explore';
-import { EnhancedHotelService } from '../services/enhancedHotelService';
+import { EnhancedPlace } from '../types/explore';
+import { EnhancedPlaceService } from '../services/enhancedPlaceService';
 import ChatbotWrapper from '../components/ChatbotWrapper';
 
 const { width: sw, height: sh } = Dimensions.get('window');
 
-interface HotelDetailScreenProps {
+interface PlaceDetailScreenProps {
   route: {
     params: {
-      hotelId: string;
-      hotelData: any;
+      placeId: string;
+      placeData: any;
       coordinates: { lat: number; lng: number };
-      price?: number; // Add price parameter
     };
   };
   navigation: any;
 }
 
-const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation }) => {
-  const { hotelId, hotelData, coordinates, price } = route.params;
-  const [enhancedHotel, setEnhancedHotel] = useState<EnhancedHotel | null>(null);
+const PlaceDetailScreen: React.FC<PlaceDetailScreenProps> = ({ route, navigation }) => {
+  const { placeId, placeData, coordinates } = route.params;
+  const [enhancedPlace, setEnhancedPlace] = useState<EnhancedPlace | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
+  const [selectedTour, setSelectedTour] = useState<string | null>(null);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
-
+  
   useEffect(() => {
-    loadHotelDetails();
-  }, [hotelId]);
-
-  const loadHotelDetails = async () => {
+    loadPlaceDetails();
+  }, [placeId]);
+  
+  const loadPlaceDetails = async () => {
     try {
       setIsLoading(true);
-      const hotelService = new EnhancedHotelService();
-
+      const placeService = new EnhancedPlaceService();
+      
       // Try to get enhanced details, fallback to mock data if API fails
-      let details: EnhancedHotel;
+      let details: EnhancedPlace;
       try {
-        details = await hotelService.getHotelDetailsByPlaceId(hotelId, coordinates);
+        details = await placeService.getPlaceDetails(placeId, coordinates);
       } catch (error) {
         console.log('Falling back to mock data:', error);
-        details = await hotelService.getMockHotelDetails(hotelId);
+        details = await placeService.getMockPlaceDetails(placeId);
       }
-
-      setEnhancedHotel(details);
+      
+      setEnhancedPlace(details);
     } catch (error) {
-      console.error('Error loading hotel details:', error);
-      Alert.alert('Error', 'Failed to load hotel details');
+      console.error('Error loading place details:', error);
+      Alert.alert('Error', 'Failed to load place details');
     } finally {
       setIsLoading(false);
     }
   };
-
-  const handleRoomSelection = (roomId: string) => {
-    setSelectedRoom(roomId === selectedRoom ? null : roomId);
+  
+  const handleTourSelection = (tourId: string) => {
+    setSelectedTour(tourId === selectedTour ? null : tourId);
   };
 
-  const contactHotel = () => {
-    if (enhancedHotel?.phone) {
-      Linking.openURL(`tel:${enhancedHotel.phone}`);
-    } else {
-      Alert.alert('Contact Info', 'Phone number not available for this hotel');
-    }
+  const contactOperator = () => {
+    Alert.alert('Contact Info', 'Contact information will be available when booking is implemented');
   };
-
+  
   const openWebsite = () => {
-    if (enhancedHotel?.website) {
-      Linking.openURL(enhancedHotel.website);
-    } else {
-      Alert.alert('Website', 'Website not available for this hotel');
-    }
+    Alert.alert('Website', 'Website information will be available when booking is implemented');
   };
-
+  
   const getDirections = () => {
     const { lat, lng } = coordinates;
     const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
@@ -93,11 +84,11 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
   };
 
   const renderPhotoCarousel = () => {
-    if (!enhancedHotel?.photos || enhancedHotel.photos.length === 0) {
+    if (!enhancedPlace?.photos || enhancedPlace.photos.length === 0) {
       return (
         <View style={styles.heroImageContainer}>
           <View style={styles.placeholderPhoto}>
-            <MaterialIcons name="hotel" size={sw * 0.2} color="#9CA3AF" />
+            <MaterialIcons name="place" size={sw * 0.2} color="#9CA3AF" />
             <Text style={styles.placeholderText}>No Photos Available</Text>
           </View>
         </View>
@@ -107,7 +98,7 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
     return (
       <View style={styles.heroImageContainer}>
         <FlatList
-          data={enhancedHotel.photos}
+          data={enhancedPlace.photos}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
@@ -120,10 +111,10 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
           )}
           keyExtractor={(item, index) => `photo_${index}`}
         />
-
+        
         {/* Photo Indicators - White dots like in the design */}
         <View style={styles.photoIndicators}>
-          {enhancedHotel.photos.map((_, index) => (
+          {enhancedPlace.photos.map((_, index) => (
             <View
               key={index}
               style={[
@@ -137,52 +128,52 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
     );
   };
 
-  const renderRoomCard = (room: any, index: number) => (
-    <TouchableOpacity
-      key={room.id}
+  const renderTourCard = (tour: any, index: number) => (
+    <TouchableOpacity 
+      key={tour.id} 
       style={[
-        styles.roomCard,
-        selectedRoom === room.id && styles.selectedRoomCard
+        styles.tourCard,
+        selectedTour === tour.id && styles.selectedTourCard
       ]}
-      onPress={() => handleRoomSelection(room.id)}
+      onPress={() => handleTourSelection(tour.id)}
     >
-      <View style={styles.roomImageContainer}>
-        <Image
-          source={{ uri: enhancedHotel?.photos?.[index] || 'https://via.placeholder.com/300x200/4F46E5/FFFFFF?text=Room+Photo' }}
-          style={styles.roomImage}
+      <View style={styles.tourImageContainer}>
+        <Image 
+          source={{ uri: enhancedPlace?.photos?.[index] || 'https://via.placeholder.com/300x200/4F46E5/FFFFFF?text=Tour+Photo' }} 
+          style={styles.tourImage}
           resizeMode="cover"
         />
-        <View style={styles.roomBadge}>
-          <Text style={styles.roomBadgeText}>Summer Discount</Text>
+        <View style={styles.tourBadge}>
+          <Text style={styles.tourBadgeText}>Popular</Text>
         </View>
       </View>
-
-      <View style={styles.roomInfo}>
-        <Text style={styles.roomType}>{room.type}</Text>
-        <View style={styles.roomPricing}>
-          <Text style={styles.roomPrice}>VND {room.price.toLocaleString()}/night</Text>
-          <Text style={styles.roomOriginalPrice}>VND {Math.round(room.price * 1.3).toLocaleString()}/night</Text>
+      
+      <View style={styles.tourInfo}>
+        <Text style={styles.tourType}>{tour.name}</Text>
+        <View style={styles.tourPricing}>
+          <Text style={styles.tourPrice}>VND {tour.price.toLocaleString()}/person</Text>
+          <Text style={styles.tourOriginalPrice}>VND {Math.round(tour.price * 1.2).toLocaleString()}/person</Text>
           <View style={styles.discountBadge}>
-            <Text style={styles.discountText}>-15%</Text>
+            <Text style={styles.discountText}>-20%</Text>
           </View>
         </View>
-
-        <View style={styles.roomTags}>
-          <View style={styles.roomTag}>
+        
+        <View style={styles.tourTags}>
+          <View style={styles.tourTag}>
             <MaterialIcons name="local-fire-department" size={sw * 0.03} color="#EC4899" />
-            <Text style={styles.roomTagText}>12 left</Text>
+            <Text style={styles.tourTagText}>8 left</Text>
           </View>
-          <View style={styles.roomTag}>
-            <MaterialIcons name="bed" size={sw * 0.03} color="#10B981" />
-            <Text style={styles.roomTagText}>Single</Text>
+          <View style={styles.tourTag}>
+            <MaterialIcons name="schedule" size={sw * 0.03} color="#10B981" />
+            <Text style={styles.tourTagText}>3h</Text>
           </View>
-          <View style={styles.roomTag}>
-            <MaterialIcons name="person" size={sw * 0.03} color="#10B981" />
-            <Text style={styles.roomTagText}>1</Text>
+          <View style={styles.tourTag}>
+            <MaterialIcons name="group" size={sw * 0.03} color="#10B981" />
+            <Text style={styles.tourTagText}>Max 15</Text>
           </View>
         </View>
-
-        <Text style={styles.roomDescription}>{room.description}</Text>
+        
+        <Text style={styles.tourDescription}>{tour.description}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -191,93 +182,102 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#10B981" />
-        <Text style={styles.loadingText}>Loading hotel details...</Text>
+        <Text style={styles.loadingText}>Loading place details...</Text>
       </View>
     );
   }
-
-  if (!enhancedHotel) {
+  
+  if (!enhancedPlace) {
     return (
       <View style={styles.errorContainer}>
         <MaterialIcons name="error" size={sw * 0.12} color="#EF4444" />
-        <Text style={styles.errorText}>Failed to load hotel details</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={loadHotelDetails}>
+        <Text style={styles.errorText}>Failed to load place details</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={loadPlaceDetails}>
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
     );
   }
-
+  
   return (
     <View style={styles.container}>
       {/* Hero Image Section */}
       {renderPhotoCarousel()}
-
+      
       {/* Main Content Card */}
       <ScrollView style={styles.contentCard} showsVerticalScrollIndicator={false}>
-        {/* Hotel Header */}
-        <View style={styles.hotelHeader}>
-          <Text style={styles.hotelName}>{enhancedHotel.name}</Text>
-          <View style={styles.hotelLocation}>
-            <Text style={styles.hotelAddress}>{enhancedHotel.address}</Text>
-            <TouchableOpacity onPress={getDirections} >
+        {/* Place Header */}
+        <View style={styles.placeHeader}>
+          <Text style={styles.placeName}>{enhancedPlace.name}</Text>
+          <Text style={styles.placeType}>{enhancedPlace.type}</Text>
+          <View style={styles.placeLocation}>
+            <Text style={styles.placeAddress}>{enhancedPlace.address}</Text>
+            <TouchableOpacity onPress={getDirections}>
               <View style={styles.viewMapIcon}><Text style={styles.viewMapText}>View Map</Text></View>
             </TouchableOpacity>
           </View>
-
+          
           <View style={styles.ratingSection}>
             <MaterialIcons name="star" size={sw * 0.05} color="#EC4899" />
-            <Text style={styles.ratingText}>{enhancedHotel.rating}</Text>
+            <Text style={styles.ratingText}>{enhancedPlace.rating}</Text>
           </View>
-
-            {/* Main price display - prioritize price from ExploreScreen, then fallback to room price */}
-            <Text style={styles.priceText}>from VND {price ? price.toLocaleString() : (enhancedHotel.roomTypes?.[0]?.price ? enhancedHotel.roomTypes[0].price.toLocaleString() : '1,500,000')}/night</Text>
+          
+          <Text style={styles.priceText}>from VND {enhancedPlace.tourOptions?.[0]?.price ? enhancedPlace.tourOptions[0].price.toLocaleString() : '500,000'}/person</Text>
         </View>
-
-        {/* Amenities - Only show if available */}
-        {enhancedHotel.amenities && enhancedHotel.amenities.length > 0 && (
+        
+        {/* About Section */}
+        <View style={styles.aboutSection}>
+          <Text style={styles.sectionTitle}>About</Text>
+          <Text style={styles.aboutText}>
+            {enhancedPlace.description || 
+              'Discover this amazing destination in Vietnam. Experience the rich culture, stunning landscapes, and unforgettable memories that await you.'}
+          </Text>
+        </View>
+        
+        {/* Amenities Section - Only show if available */}
+        {enhancedPlace.amenities && enhancedPlace.amenities.length > 0 && (
           <View style={styles.amenitiesSection}>
             <Text style={styles.sectionTitle}>Amenities</Text>
             <View style={styles.amenitiesGrid}>
-              {enhancedHotel.amenities.slice(0, 8).map((amenity, index) => {
+              {enhancedPlace.amenities.slice(0, 8).map((amenity: string, index: number) => {
                 // Map amenity names to appropriate icons
                 const getAmenityIcon = (amenityName: string) => {
                   const name = amenityName.toLowerCase();
                   if (name.includes('wifi') || name.includes('internet')) return 'wifi';
-                  if (name.includes('pool') || name.includes('swimming')) return 'pool';
-                  if (name.includes('spa') || name.includes('wellness')) return 'spa';
                   if (name.includes('parking') || name.includes('car')) return 'local-parking';
                   if (name.includes('restaurant') || name.includes('dining')) return 'restaurant';
-                  if (name.includes('gym') || name.includes('fitness')) return 'fitness-center';
-                  if (name.includes('beach') || name.includes('ocean')) return 'beach-access';
-                  if (name.includes('room service') || name.includes('service')) return 'room-service';
-                  if (name.includes('bar') || name.includes('lounge')) return 'local-bar';
-                  if (name.includes('concierge') || name.includes('reception')) return 'concierge';
-                  if (name.includes('shuttle') || name.includes('transport')) return 'directions-car';
-                  if (name.includes('business') || name.includes('meeting')) return 'business-center';
-                  if (name.includes('laundry') || name.includes('dry')) return 'local-laundry-service';
-                  if (name.includes('child') || name.includes('kids')) return 'child-care';
-                  if (name.includes('pet') || name.includes('dog')) return 'pets';
+                  if (name.includes('guide') || name.includes('tour')) return 'person';
+                  if (name.includes('accessibility') || name.includes('wheelchair')) return 'accessibility';
+                  if (name.includes('museum') || name.includes('exhibit')) return 'museum';
+                  if (name.includes('garden') || name.includes('park')) return 'park';
+                  if (name.includes('shopping') || name.includes('store')) return 'shopping-bag';
+                  if (name.includes('transport') || name.includes('bus')) return 'directions-bus';
+                  if (name.includes('information') || name.includes('info')) return 'info';
+                  if (name.includes('security') || name.includes('safety')) return 'security';
+                  if (name.includes('first aid') || name.includes('medical')) return 'local-hospital';
+                  if (name.includes('bathroom') || name.includes('toilet')) return 'wc';
+                  if (name.includes('drinking') || name.includes('water')) return 'local-drink';
+                  if (name.includes('smoking') || name.includes('smoke')) return 'smoking-rooms';
                   if (name.includes('prayer') || name.includes('worship')) return 'place-of-worship';
-                  if (name.includes('garden') || name.includes('nature')) return 'park';
-                  if (name.includes('exhibit') || name.includes('museum')) return 'museum';
-                  if (name.includes('tour') || name.includes('guide')) return 'person';
+                  if (name.includes('nature') || name.includes('natural')) return 'landscape';
                   if (name.includes('cultural') || name.includes('heritage')) return 'celebration';
                   if (name.includes('historical') || name.includes('site')) return 'history-edu';
                   if (name.includes('scenic') || name.includes('view')) return 'landscape';
                   if (name.includes('recreation') || name.includes('activity')) return 'sports-soccer';
                   if (name.includes('outdoor') || name.includes('walking')) return 'directions-walk';
-                  if (name.includes('information') || name.includes('info')) return 'info';
-                  if (name.includes('accessibility') || name.includes('wheelchair')) return 'accessibility';
+                  if (name.includes('photo') || name.includes('opportunity')) return 'camera-alt';
+                  if (name.includes('spiritual') || name.includes('experience')) return 'self-improvement';
+                  if (name.includes('local') || name.includes('business')) return 'store';
+                  if (name.includes('community') || name.includes('service')) return 'people';
                   return 'check-circle'; // Default icon
                 };
 
                 return (
                   <View key={index} style={styles.amenityPill}>
-                    <MaterialIcons
-                      name={getAmenityIcon(amenity) as any}
-                      size={sw * 0.04}
-                      color="#10B981"
+                    <MaterialIcons 
+                      name={getAmenityIcon(amenity) as any} 
+                      size={sw * 0.04} 
+                      color="#10B981" 
                     />
                     <Text style={styles.amenityPillText}>{amenity}</Text>
                   </View>
@@ -286,27 +286,29 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
             </View>
           </View>
         )}
-
-        {/* About Section */}
-        <View style={styles.aboutSection}>
-          <Text style={styles.sectionTitle}>About</Text>
-          <Text style={styles.aboutText}>
-            {enhancedHotel.description || 'Experience luxury at its finest in the heart of Vietnam. Our hotel offers stunning views, world-class amenities, and exceptional services for an unforgettable stay.'}
-          </Text>
-        </View>
-
-        {/* Available Rooms */}
-        {enhancedHotel.roomTypes && enhancedHotel.roomTypes.length > 0 && (
-          <View style={styles.roomsSection}>
-            <Text style={styles.sectionTitle}>Available Rooms</Text>
-            <View style={styles.roomsGrid}>
-              {enhancedHotel.roomTypes.map((room, index) => renderRoomCard(room, index))}
+        
+        {/* Opening Hours */}
+        {enhancedPlace.openingHours && enhancedPlace.openingHours.length > 0 && (
+          <View style={styles.hoursSection}>
+            <Text style={styles.sectionTitle}>Opening Hours</Text>
+            {enhancedPlace.openingHours.map((hour, index) => (
+              <Text key={index} style={styles.hourText}>{hour}</Text>
+            ))}
+          </View>
+        )}
+        
+        {/* Available Tours */}
+        {enhancedPlace.tourOptions && enhancedPlace.tourOptions.length > 0 && (
+          <View style={styles.toursSection}>
+            <Text style={styles.sectionTitle}>Available Tours</Text>
+            <View style={styles.toursGrid}>
+              {enhancedPlace.tourOptions.map((tour, index) => renderTourCard(tour, index))}
             </View>
           </View>
         )}
-
+        
         {/* Guest Reviews - Only show if there are reviews */}
-        {enhancedHotel.reviews && enhancedHotel.reviews.length > 0 && (
+        {enhancedPlace.reviews && enhancedPlace.reviews.length > 0 && (
           <View style={styles.reviewsSection}>
             <View style={styles.reviewsHeader}>
               <Text style={styles.sectionTitle}>Guest Reviews</Text>
@@ -314,28 +316,28 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
                 <Text style={styles.seeMoreText}>See More</Text>
               </TouchableOpacity>
             </View>
-
+            
             <View style={styles.ratingDisplay}>
-              <Text style={styles.largeRating}>{enhancedHotel.rating}</Text>
+              <Text style={styles.largeRating}>{enhancedPlace.rating}</Text>
               <View style={styles.starsRow}>
                 {[1, 2, 3, 4, 5].map((star) => (
-                  <MaterialIcons
-                    key={star}
-                    name="star"
-                    size={sw * 0.06}
-                    color={star <= enhancedHotel.rating ? "#EC4899" : "#E5E7EB"}
+                  <MaterialIcons 
+                    key={star} 
+                    name="star" 
+                    size={sw * 0.06} 
+                    color={star <= enhancedPlace.rating ? "#EC4899" : "#E5E7EB"} 
                   />
                 ))}
               </View>
               <Text style={styles.reviewCount}>
-                {enhancedHotel.reviews.length > 0
+                {enhancedPlace.reviews.length > 0 
                   ? 'Guest Reviews'
                   : 'No reviews yet'
                 }
               </Text>
             </View>
-
-            {enhancedHotel.reviews.map((review, index) => (
+            
+            {enhancedPlace.reviews.map((review, index) => (
               <View key={review.id} style={styles.reviewItem}>
                 <Text style={styles.reviewAuthor}>{review.author}</Text>
                 <Text style={styles.reviewDate}>{review.date}</Text>
@@ -344,7 +346,7 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
             ))}
           </View>
         )}
-
+        
         {/* Bottom Spacing */}
         <View style={styles.bottomSpacing} />
       </ScrollView>
@@ -443,29 +445,38 @@ const styles = StyleSheet.create({
   contentCard: {
     flex: 1,
     backgroundColor: 'white',
+    borderTopLeftRadius: sw * 0.06,
+    borderTopRightRadius: sw * 0.06,
     marginTop: -sh * 0.02, // Overlap with hero image
-    borderRadius: sw * 0.06,
+    paddingHorizontal: sw * 0.05,
+    paddingTop: sh * 0.025,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowRadius: 8,
+    elevation: 10,
   },
-  hotelHeader: {
-    padding: sw * 0.05,
+  placeHeader: {
+    marginBottom: sh * 0.025,
   },
-  hotelName: {
-    fontSize: sw * 0.07,
+  placeName: {
+    fontSize: sw * 0.08,
     fontWeight: '800',
     color: '#111827',
-    marginBottom: sh * 0.01,
+    marginBottom: sh * 0.006,
   },
-  hotelLocation: {
+  placeType: {
+    fontSize: sw * 0.045,
+    color: '#6B7280',
+    marginBottom: sh * 0.01,
+    textTransform: 'capitalize',
+  },
+  placeLocation: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: sh * 0.01,
   },
-  hotelAddress: {
+  placeAddress: {
     fontSize: sw * 0.035,
     color: '#6B7280',
     marginRight: sw * 0.025,
@@ -499,19 +510,26 @@ const styles = StyleSheet.create({
   },
   priceText: {
     fontSize: sw * 0.06,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#10B981',
     marginTop: sh * 0.01,
   },
-  amenitiesSection: {
-    paddingHorizontal: sw * 0.05,
-    paddingBottom: sh * 0.025,
+  aboutSection: {
+    marginBottom: sh * 0.025,
   },
   sectionTitle: {
     fontSize: sw * 0.05,
     fontWeight: '700',
     color: '#111827',
     marginBottom: sh * 0.02,
+  },
+  aboutText: {
+    fontSize: sw * 0.035,
+    color: '#6B7280',
+    lineHeight: sh * 0.03,
+  },
+  amenitiesSection: {
+    marginBottom: sh * 0.025,
   },
   amenitiesGrid: {
     flexDirection: 'row',
@@ -536,50 +554,45 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: sw * 0.01,
   },
-  aboutSection: {
-    paddingHorizontal: sw * 0.05,
-    paddingBottom: sh * 0.025,
+  hoursSection: {
+    marginBottom: sh * 0.025,
   },
-  aboutText: {
+  hourText: {
     fontSize: sw * 0.035,
     color: '#6B7280',
-    lineHeight: sh * 0.03,
+    marginBottom: sh * 0.01,
   },
-  roomsSection: {
-    paddingHorizontal: sw * 0.05,
-    paddingBottom: sh * 0.025,
+  toursSection: {
+    marginBottom: sh * 0.025,
   },
-  roomsGrid: {
+  toursGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
-  roomCard: {
+  tourCard: {
     width: '48%', // Two columns
     backgroundColor: '#F9FAFB',
-    borderRadius: sw * 0.04,
+    borderRadius: sw * 0.03,
     overflow: 'hidden',
-    marginBottom: sh * 0.02,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    marginBottom: sh * 0.015,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  selectedRoomCard: {
+  selectedTourCard: {
     borderColor: '#3B82F6',
-    borderWidth: 2,
+    backgroundColor: '#EFF6FF',
   },
-  roomImageContainer: {
+  tourImageContainer: {
     width: '100%',
     height: sh * 0.18,
     position: 'relative',
   },
-  roomImage: {
+  tourImage: {
     width: '100%',
     height: '100%',
   },
-  roomBadge: {
+  tourBadge: {
     position: 'absolute',
     top: sh * 0.015,
     left: sw * 0.025,
@@ -588,33 +601,33 @@ const styles = StyleSheet.create({
     paddingVertical: sh * 0.006,
     borderRadius: sw * 0.01,
   },
-  roomBadgeText: {
+  tourBadgeText: {
     color: 'white',
     fontSize: sw * 0.03,
     fontWeight: '600',
   },
-  roomInfo: {
-    padding: sw * 0.04,
+  tourInfo: {
+    padding: sw * 0.03,
   },
-  roomType: {
+  tourType: {
     fontSize: sw * 0.04,
     fontWeight: '700',
     color: '#111827',
     marginBottom: sh * 0.01,
   },
-  roomPricing: {
+  tourPricing: {
     flexDirection: 'row',
     alignItems: 'baseline',
     marginBottom: sh * 0.01,
     flexWrap: 'wrap',
   },
-  roomPrice: {
+  tourPrice: {
     fontSize: sw * 0.04,
     fontWeight: '700',
     color: '#10B981',
     flexShrink: 1,
   },
-  roomOriginalPrice: {
+  tourOriginalPrice: {
     fontSize: sw * 0.03,
     color: '#6B7280',
     textDecorationLine: 'line-through',
@@ -633,33 +646,31 @@ const styles = StyleSheet.create({
     fontSize: sw * 0.03,
     fontWeight: '600',
   },
-  roomTags: {
+  tourTags: {
     flexDirection: 'row',
     marginBottom: sh * 0.015,
   },
-  roomTag: {
+  tourTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#E0F2FE',
+    borderRadius: sw * 0.02,
     paddingHorizontal: sw * 0.02,
     paddingVertical: sh * 0.006,
-    borderRadius: sw * 0.025,
     marginRight: sw * 0.02,
   },
-  roomTagText: {
+  tourTagText: {
     fontSize: sw * 0.03,
-    color: '#374151',
-    fontWeight: '500',
+    color: '#10B981',
     marginLeft: sw * 0.01,
   },
-  roomDescription: {
+  tourDescription: {
     fontSize: sw * 0.035,
     color: '#6B7280',
     lineHeight: sh * 0.025,
   },
   reviewsSection: {
-    paddingHorizontal: sw * 0.05,
-    paddingBottom: sh * 0.025,
+    marginBottom: sh * 0.025,
   },
   reviewsHeader: {
     flexDirection: 'row',
@@ -670,7 +681,7 @@ const styles = StyleSheet.create({
   seeMoreText: {
     fontSize: sw * 0.035,
     color: '#3B82F6',
-    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   ratingDisplay: {
     alignItems: 'center',
@@ -719,4 +730,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HotelDetailScreen;
+export default PlaceDetailScreen;

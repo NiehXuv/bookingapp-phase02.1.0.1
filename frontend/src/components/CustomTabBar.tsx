@@ -9,7 +9,7 @@ const { width } = Dimensions.get('window');
 
 const TAB_ICONS = [
   { name: 'home', lib: MaterialCommunityIcons, label: 'Home' },
-  { name: 'map', lib: Feather, label: 'Plan' },
+  { name: 'search', lib: Feather, label: 'Explore' },
   { name: 'play-circle', lib: FontAwesome, label: 'Reels' },
   { name: 'calendar', lib: Feather, label: 'Booking' },
   { name: 'user', lib: Feather, label: 'Profile' },
