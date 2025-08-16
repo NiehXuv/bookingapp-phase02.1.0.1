@@ -372,7 +372,7 @@ class GooglePlacesService {
     if (!priceLevel) return Math.floor(Math.random() * 1500000) + 500000;
     
     // Price levels in VND: 0=Budget, 1=Economy, 2=Mid-range, 3=Upscale, 4=Luxury
-    const priceRanges = [500000, 800000, 1500000, 3000000, 5000000];
+    const priceRanges = [100000, 300000, 500000, 700000, 900000];
     return priceRanges[priceLevel] || 1000000;
   }
 

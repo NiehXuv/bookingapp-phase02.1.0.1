@@ -38,6 +38,16 @@ export const API_CONFIG = {
     API_SECRET: 'Fk4KhjJsdWFEkqOg',
     BASE_URL: 'https://test.api.amadeus.com',
     ENVIRONMENT: 'test', // or 'production'
+  },
+  AGODA: {
+    AFFILIATE_ID: process.env.AGODA_AFFILIATE_ID || 'YOUR_AGODA_AFFILIATE_ID',
+    API_KEY: process.env.AGODA_API_KEY || 'YOUR_AGODA_API_KEY',
+    BASE_URL: 'https://api.agoda.com', // Placeholder - will be updated when you get access
+    ENVIRONMENT: 'development', // 'development' or 'production'
+    RATE_LIMIT: {
+      REQUESTS_PER_MINUTE: 100,
+      REQUESTS_PER_DAY: 10000
+    }
   }
 };
 
@@ -78,6 +88,22 @@ export const getAmadeusApiSecret = (): string => {
     console.warn('⚠️ Amadeus API secret not configured. Please set AMADEUS_CLIENT_SECRET in your .env file');
   }
   return secret;
+};
+
+export const getAgodaAffiliateId = (): string => {
+  const affiliateId = process.env.AGODA_AFFILIATE_ID || API_CONFIG.AGODA.AFFILIATE_ID;
+  if (affiliateId === 'YOUR_AGODA_AFFILIATE_ID') {
+    console.warn('⚠️ Agoda affiliate ID not configured. Please set AGODA_AFFILIATE_ID in your .env file');
+  }
+  return affiliateId;
+};
+
+export const getAgodaApiKey = (): string => {
+  const apiKey = process.env.AGODA_API_KEY || API_CONFIG.AGODA.API_KEY;
+  if (apiKey === 'YOUR_AGODA_API_KEY') {
+    console.warn('⚠️ Agoda API key not configured. Please set AGODA_API_KEY in your .env file');
+  }
+  return apiKey;
 };
 
 

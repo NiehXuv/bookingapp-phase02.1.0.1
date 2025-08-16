@@ -46,7 +46,7 @@ const ExploreScreen: React.FC = () => {
     try {
       // Load initial hotels and places for Hanoi, Vietnam
       const [hotelsData, placesData] = await Promise.all([
-        googlePlacesService.searchHotels('Hanoi', 'Hanoi, Vietnam', 50000),
+        googlePlacesService.searchHotels('Hoan Kiem', 'Hanoi, Vietnam', 50000),
         googlePlacesService.searchPlaces('attractions', 'Hanoi, Vietnam', 50000)
       ]);
       

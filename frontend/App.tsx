@@ -16,8 +16,7 @@ import ChatbotWrapper from './src/components/ChatbotWrapper';
 import HotelSearchScreen from './src/screens/HotelSearchScreen';
 import TransportSearchScreen from './src/screens/TransportSearchScreen';
 import TourSearchScreen from './src/screens/TourSearchScreen';
-import PlanScreen from './src/screens/ExploreScreen';
-import ReelsScreen from './src/screens/ReelsScreen';
+import PlanScreen from './src/screens/PlanScreen';
 import BookingScreen from './src/screens/BookingScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import SearchHotelResultScreen from './src/screens/SearchHotelResultScreen';
@@ -26,6 +25,11 @@ import PlaceDetailScreen from './src/screens/PlaceDetailScreen';
 import SearchTransportResultScreen from './src/screens/SearchTransportResultScreen';
 import SearchTourResultScreen from './src/screens/SearchTourResultScreen';
 import DetailScreen from './src/screens/DetailScreen';
+import PlanningFlowNavigator from './src/screens/planning/PlanningFlowNavigator';
+import PlanningSummaryScreen from './src/screens/planning/PlanningSummaryScreen';
+import PlanningResultScreen from './src/screens/planning/PlanningResultScreen';
+import PlanManualScreen from './src/screens/planning/PlanManualScreen';
+import ExploreScreen from './src/screens/ExploreScreen';
 
 // Context
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -39,8 +43,8 @@ function MainTabs() {
     <View style={{ flex: 1 }}>
       <Tab.Navigator screenOptions={{ headerShown: false }} tabBar={props => <CustomTabBar {...props} />}>
         <Tab.Screen name="Home" component={HomeScreen} />
+        <Tab.Screen name="Explore" component={ExploreScreen} />
         <Tab.Screen name="Plan" component={PlanScreen} />
-        <Tab.Screen name="Reels" component={ReelsScreen} />
         <Tab.Screen name="Booking" component={BookingScreen} />
         <Tab.Screen name="Profile" component={ProfileScreen} />
       </Tab.Navigator>
@@ -72,6 +76,10 @@ function RootNavigator() {
             <Stack.Screen name="SearchTransportResult" component={SearchTransportResultScreen} />
             <Stack.Screen name="SearchTourResult" component={SearchTourResultScreen} />
             <Stack.Screen name="DetailScreen" component={DetailScreen} />
+            <Stack.Screen name="PlanningFlow" component={PlanningFlowNavigator} />
+            <Stack.Screen name="PlanningSummary" component={PlanningSummaryScreen} />
+            <Stack.Screen name="PlanningResult" component={PlanningResultScreen} />
+            <Stack.Screen name="PlanManual" component={PlanManualScreen} />
           </>
         )}
       </Stack.Navigator>
