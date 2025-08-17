@@ -11,7 +11,7 @@ const TAB_ICONS = [
   { name: 'home', lib: MaterialCommunityIcons, label: 'Home' },
   { name: 'search', lib: Feather, label: 'Explore' },
   { name: 'map', lib: Feather, label: 'Plan' },
-  { name: 'calendar', lib: Feather, label: 'Booking' },
+  { name: 'message-circle', lib: Feather, label: 'Inbox' },
   { name: 'user', lib: Feather, label: 'Profile' },
 ];
 

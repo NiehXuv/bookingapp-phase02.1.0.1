@@ -17,7 +17,7 @@ import HotelSearchScreen from './src/screens/HotelSearchScreen';
 import TransportSearchScreen from './src/screens/TransportSearchScreen';
 import TourSearchScreen from './src/screens/TourSearchScreen';
 import PlanScreen from './src/screens/PlanScreen';
-import BookingScreen from './src/screens/BookingScreen';
+import InboxScreen from './src/screens/InboxScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import SearchHotelResultScreen from './src/screens/SearchHotelResultScreen';
 import HotelDetailScreen from './src/screens/HotelDetailScreen';
@@ -45,7 +45,7 @@ function MainTabs() {
         <Tab.Screen name="Home" component={HomeScreen} />
         <Tab.Screen name="Explore" component={ExploreScreen} />
         <Tab.Screen name="Plan" component={PlanScreen} />
-        <Tab.Screen name="Booking" component={BookingScreen} />
+        <Tab.Screen name="Inbox" component={InboxScreen} />
         <Tab.Screen name="Profile" component={ProfileScreen} />
       </Tab.Navigator>
       <ChatbotWrapper />
@@ -80,6 +80,7 @@ function RootNavigator() {
             <Stack.Screen name="PlanningSummary" component={PlanningSummaryScreen} />
             <Stack.Screen name="PlanningResult" component={PlanningResultScreen} />
             <Stack.Screen name="PlanManual" component={PlanManualScreen} />
+            <Stack.Screen name="Inbox" component={InboxScreen} />
           </>
         )}
       </Stack.Navigator>

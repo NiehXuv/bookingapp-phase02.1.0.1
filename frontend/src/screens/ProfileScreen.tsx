@@ -10,7 +10,7 @@ const ProfileScreen: React.FC = () => {
   const navigation = useNavigation();
   const { user, isAuthenticated, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [activeTab, setActiveTab] = useState<'saved' | 'content' | 'plan'>('saved');
+  const [activeTab, setActiveTab] = useState<'saved' | 'plan' | 'booking'>('saved');
   const [showProfileSettings, setShowProfileSettings] = useState(false);
 
   const handleLogout = async () => {
@@ -49,16 +49,16 @@ const ProfileScreen: React.FC = () => {
             <Text style={styles.tabPlaceholder}>Your saved items will appear here</Text>
           </View>
         );
-      case 'content':
-        return (
-          <View style={styles.tabContent}>
-            <Text style={styles.tabPlaceholder}>Your created content will appear here</Text>
-          </View>
-        );
       case 'plan':
         return (
           <View style={styles.tabContent}>
             <Text style={styles.tabPlaceholder}>Your travel plans will appear here</Text>
+          </View>
+        );
+      case 'booking':
+        return (
+          <View style={styles.tabContent}>
+            <Text style={styles.tabPlaceholder}>Your bookings will appear here</Text>
           </View>
         );
       default:
@@ -209,19 +209,19 @@ const ProfileScreen: React.FC = () => {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity 
-            style={[styles.headerTab, activeTab === 'content' && styles.activeHeaderTab]}
-            onPress={() => setActiveTab('content')}
-          >
-            <Text style={[styles.headerTabText, activeTab === 'content' && styles.activeHeaderTabText]}>
-              Your Content
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
             style={[styles.headerTab, activeTab === 'plan' && styles.activeHeaderTab]}
             onPress={() => setActiveTab('plan')}
           >
             <Text style={[styles.headerTabText, activeTab === 'plan' && styles.activeHeaderTabText]}>
               Your Plan
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.headerTab, activeTab === 'booking' && styles.activeHeaderTab]}
+            onPress={() => setActiveTab('booking')}
+          >
+            <Text style={[styles.headerTabText, activeTab === 'booking' && styles.activeHeaderTabText]}>
+              Your Booking
             </Text>
           </TouchableOpacity>
         </View>
