@@ -1,5 +1,4 @@
-const { database } = require("../../config/firebaseconfig.js");
-const { ref, get, set } = require("firebase/database");
+const { database, get, set } = require("../../config/firebaseconfig.js");
 
 async function addToFavorites(req, res) {
   try {
@@ -20,7 +19,7 @@ async function addToFavorites(req, res) {
     }
 
     // Get existing favorites
-    const favoritesRef = ref(database, `Users/${uid}/favorites`);
+    const favoritesRef = `Users/${uid}`/favorites;
     const snapshot = await get(favoritesRef);
 
     let favorites = {};

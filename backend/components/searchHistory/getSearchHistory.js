@@ -1,12 +1,11 @@
-const { database } = require("../../config/firebaseconfig.js");
-const { ref, get } = require("firebase/database");
+const { database, get } = require("../../config/firebaseconfig.js");
 
 async function getSearchHistory(req, res) {
   try {
     const { uid } = req.user; // From JWT token
     const { type, limit = 50 } = req.query; // Optional filters
 
-    const searchHistoryRef = ref(database, `Users/${uid}/searchHistory`);
+    const searchHistoryRef = `Users/${uid}`/searchHistory;
     const snapshot = await get(searchHistoryRef);
 
     if (!snapshot.exists()) {

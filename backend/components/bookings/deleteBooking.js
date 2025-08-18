@@ -1,5 +1,4 @@
-const { database } = require("../../config/firebaseconfig.js");
-const { ref, remove } = require("firebase/database");
+const { database, remove } = require("../../config/firebaseconfig.js");
 
 async function deleteBooking(req, res) {
   try {
@@ -10,7 +9,7 @@ async function deleteBooking(req, res) {
       return res.status(400).json({ error: "Booking ID is required" });
     }
 
-    const bookingRef = ref(database, `Users/${uid}/bookings/${bookingId}`);
+    const bookingRef = `Users/${uid}`/`bookings/${bookingId}`;
     
     // Delete the booking
     await remove(bookingRef);

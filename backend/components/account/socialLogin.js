@@ -1,61 +1,75 @@
 // components/Account/socialLogin.js
-const { auth, database } = require("../../config/firebaseconfig.js");
-const { signInWithPopup, GoogleAuthProvider, FacebookAuthProvider } = require("firebase/auth");
-const { ref, set, get } = require("firebase/database");
+const { auth, database, set, get } = require("../../config/firebaseconfig.js");
 
-// Initialize providers
-const googleProvider = new GoogleAuthProvider();
-const facebookProvider = new FacebookAuthProvider();
-
-// Add scopes (optional)
-googleProvider.addScope('email profile');
-facebookProvider.addScope('email public_profile');
-
-async function handleSocialLogin(req, res, provider) {
+async function handleSocialLogin(req, res) {
   try {
-    const { idToken } = req.body; // Client sends ID token after Firebase Auth
+    const { provider, accessToken, email, displayName, photoURL } = req.body;
 
-    // Verify ID token on the server (optional, for added security)
-    const decodedToken = await auth.verifyIdToken(idToken);
-    const { uid, email, name } = decodedToken;
+    if (!provider || !accessToken || !email) {
+      return res.status(400).json({ error: 'Provider, access token, and email are required' });
+    }
 
-    // Check if user exists in Realtime Database
-    const userRef = ref(database, `Users/${uid}`);
-    const snapshot = await get(userRef);
+    // Check if user already exists
+    const snapshot = await get('Users');
+    let uid = null;
+    let userData = null;
 
-    if (!snapshot.exists()) {
-      // Create new user in Realtime Database
-      await set(userRef, {
-        username: uid,
-        email: email || '',
-        displayName: name || '',
-        provider: provider.providerId, // e.g., 'google.com' or 'facebook.com'
-        createdAt: Date.now(),
+    if (snapshot.exists()) {
+      snapshot.forEach((childSnapshot) => {
+        const user = childSnapshot.val();
+        if (user && user.profile && user.profile.email === email) {
+          uid = childSnapshot.key;
+          userData = user;
+          return; // Found the user, stop searching
+        }
       });
     }
 
-    // Generate a custom token for the client (optional)
-    const customToken = await auth.createCustomToken(uid);
+    if (uid && userData) {
+      // User exists, return success
+      res.status(200).json({
+        message: 'Social login successful',
+        user: {
+          uid,
+          username: userData.profile.username,
+          email: userData.profile.email,
+          country: userData.profile.country,
+          phoneNumber: userData.profile.phoneNumber,
+        }
+      });
+    } else {
+      // Create new user
+      const newUid = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      const userData = {
+        profile: {
+          username: displayName || email.split('@')[0],
+          email: email,
+          photoURL: photoURL || null,
+          provider: provider,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      };
 
-    res.status(200).json({
-      message: 'Login successful',
-      user: { uid, email, displayName: name },
-      token: customToken,
-    });
-  } catch (err) {
-    console.error('Error in social login:', err.message);
-    res.status(500).json({ error: 'Failed to authenticate' });
+      await set(`Users/${newUid}`, userData);
+
+      res.status(201).json({
+        message: 'Social login successful - new account created',
+        user: {
+          uid: newUid,
+          username: userData.profile.username,
+          email: userData.profile.email,
+          photoURL: userData.profile.photoURL,
+          provider: userData.profile.provider
+        }
+      });
+    }
+
+  } catch (error) {
+    console.error('Error in social login:', error);
+    res.status(500).json({ error: 'Failed to process social login', details: error.message });
   }
 }
 
-// Google Login
-async function googleLogin(req, res) {
-  await handleSocialLogin(req, res, googleProvider);
-}
-
-// Facebook Login
-async function facebookLogin(req, res) {
-  await handleSocialLogin(req, res, facebookProvider);
-}
-
-module.exports = { googleLogin, facebookLogin };
+module.exports = { handleSocialLogin };

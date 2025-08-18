@@ -1,5 +1,4 @@
-const { database } = require("../../config/firebaseconfig.js");
-const { ref, get, set } = require("firebase/database");
+const { database, get, set } = require("../../config/firebaseconfig.js");
 
 async function updateBooking(req, res) {
   try {
@@ -12,7 +11,7 @@ async function updateBooking(req, res) {
     }
 
     // Get existing booking
-    const bookingRef = ref(database, `Users/${uid}/bookings/${bookingId}`);
+    const bookingRef = `Users/${uid}`/`bookings/${bookingId}`;
     const snapshot = await get(bookingRef);
 
     if (!snapshot.exists()) {

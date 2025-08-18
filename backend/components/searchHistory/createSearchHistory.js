@@ -1,5 +1,4 @@
-const { database } = require("../../config/firebaseconfig.js");
-const { ref, set, push } = require("firebase/database");
+const { database, ref, set, push } = require("../../config/firebaseconfig.js");
 
 async function createSearchHistory(req, res) {
   try {
@@ -28,7 +27,7 @@ async function createSearchHistory(req, res) {
     };
 
     // Create new search history entry with auto-generated ID
-    const searchHistoryRef = ref(database, `Users/${uid}/searchHistory`);
+    const searchHistoryRef = `Users/${uid}`/searchHistory;
     const newSearchRef = push(searchHistoryRef);
     const searchId = newSearchRef.key;
 

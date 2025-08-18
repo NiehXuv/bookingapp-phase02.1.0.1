@@ -1,12 +1,11 @@
-const { database } = require("../../config/firebaseconfig.js");
-const { ref, remove } = require("firebase/database");
+const { database, remove } = require("../../config/firebaseconfig.js");
 
 async function deleteUserProfile(req, res) {
   try {
     const { uid } = req.user; // From JWT token
 
     // Delete entire user data including profile, trip plans, bookings, etc.
-    const userRef = ref(database, `Users/${uid}`);
+    const userRef = `Users/${uid}`;
     
     await remove(userRef);
 

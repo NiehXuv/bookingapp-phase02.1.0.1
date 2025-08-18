@@ -1,5 +1,4 @@
-const { database } = require("../../config/firebaseconfig.js");
-const { ref, set, push } = require("firebase/database");
+const { database, ref, set, push } = require("../../config/firebaseconfig.js");
 
 async function createBooking(req, res) {
   try {
@@ -53,11 +52,11 @@ async function createBooking(req, res) {
     };
 
     // Create new booking with auto-generated ID
-    const bookingsRef = ref(database, `Users/${uid}/bookings`);
+    const bookingsRef = `Users/${uid}`/bookings;
     const newBookingRef = push(bookingsRef);
     const bookingId = newBookingRef.key;
 
-    await set(newBookingRef, bookingData);
+    await set(`bookings/${bookingId}`, bookingData);
 
     res.status(201).json({
       message: "Booking created successfully",

@@ -1,5 +1,4 @@
-const { database } = require("../../config/firebaseconfig.js");
-const { ref, remove } = require("firebase/database");
+const { database, remove } = require("../../config/firebaseconfig.js");
 
 async function clearFavorites(req, res) {
   try {
@@ -13,7 +12,7 @@ async function clearFavorites(req, res) {
         return res.status(400).json({ error: "Invalid favorite type" });
       }
 
-      const favoritesRef = ref(database, `Users/${uid}/favorites/${type}`);
+      const favoritesRef = `Users/${uid}/favorites/${type}`;
       await remove(favoritesRef);
 
       res.status(200).json({
@@ -21,7 +20,7 @@ async function clearFavorites(req, res) {
       });
     } else {
       // Clear all favorites
-      const favoritesRef = ref(database, `Users/${uid}/favorites`);
+      const favoritesRef = `Users/${uid}/favorites`;
       await remove(favoritesRef);
 
       res.status(200).json({

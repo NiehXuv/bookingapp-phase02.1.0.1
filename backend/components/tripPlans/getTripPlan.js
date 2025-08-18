@@ -1,5 +1,4 @@
-const { database } = require("../../config/firebaseconfig.js");
-const { ref, get } = require("firebase/database");
+const { database, get } = require("../../config/firebaseconfig.js");
 
 async function getTripPlan(req, res) {
   try {
@@ -10,7 +9,7 @@ async function getTripPlan(req, res) {
       return res.status(400).json({ error: "Plan ID is required" });
     }
 
-    const tripPlanRef = ref(database, `Users/${uid}/tripPlans/${planId}`);
+    const tripPlanRef = `Users/${uid}`/`tripPlans/${planId}`;
     const snapshot = await get(tripPlanRef);
 
     if (!snapshot.exists()) {

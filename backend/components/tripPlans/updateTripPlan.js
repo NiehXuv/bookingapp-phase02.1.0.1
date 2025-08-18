@@ -1,5 +1,4 @@
-const { database } = require("../../config/firebaseconfig.js");
-const { ref, get, set } = require("firebase/database");
+const { database, get, set } = require("../../config/firebaseconfig.js");
 
 async function updateTripPlan(req, res) {
   try {
@@ -12,7 +11,7 @@ async function updateTripPlan(req, res) {
     }
 
     // Get existing trip plan
-    const tripPlanRef = ref(database, `Users/${uid}/tripPlans/${planId}`);
+    const tripPlanRef = `Users/${uid}`/`tripPlans/${planId}`;
     const snapshot = await get(tripPlanRef);
 
     if (!snapshot.exists()) {

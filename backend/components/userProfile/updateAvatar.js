@@ -1,5 +1,4 @@
-const { database } = require("../../config/firebaseconfig.js");
-const { ref, get, set } = require("firebase/database");
+const { database, get, set } = require("../../config/firebaseconfig.js");
 
 async function updateAvatar(req, res) {
   try {
@@ -18,7 +17,7 @@ async function updateAvatar(req, res) {
     }
 
     // Get existing profile
-    const userProfileRef = ref(database, `Users/${uid}/profile`);
+    const userProfileRef = `Users/${uid}`/profile;
     const snapshot = await get(userProfileRef);
 
     if (!snapshot.exists()) {

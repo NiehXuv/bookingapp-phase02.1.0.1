@@ -1,5 +1,4 @@
-const { database } = require("../../config/firebaseconfig.js");
-const { ref, remove } = require("firebase/database");
+const { database, remove } = require("../../config/firebaseconfig.js");
 
 async function deleteNotification(req, res) {
   try {
@@ -10,7 +9,7 @@ async function deleteNotification(req, res) {
       return res.status(400).json({ error: "Notification ID is required" });
     }
 
-    const notificationRef = ref(database, `Users/${uid}/notifications/${notificationId}`);
+    const notificationRef = `Users/${uid}`/`notifications/${notificationId}`;
     
     // Delete the notification
     await remove(notificationRef);

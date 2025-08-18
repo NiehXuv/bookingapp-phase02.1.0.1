@@ -1,5 +1,4 @@
-const { database } = require("../../config/firebaseconfig.js");
-const { ref, set, push, get } = require("firebase/database");
+const { database, set, push, get } = require("../../config/firebaseconfig.js");
 
 async function createTripPlan(req, res) {
   try {
@@ -52,11 +51,11 @@ async function createTripPlan(req, res) {
     };
 
     // Create new trip plan with auto-generated ID
-    const tripPlansRef = ref(database, `Users/${uid}/tripPlans`);
-    const newTripPlanRef = push(tripPlansRef);
+    const tripPlansPath = `Users/${uid}/tripPlans`;
+    const newTripPlanRef = database.ref(tripPlansPath).push();
     const planId = newTripPlanRef.key;
 
-    await set(newTripPlanRef, tripPlanData);
+    await set(`${tripPlansPath}/${planId}`, tripPlanData);
 
     res.status(201).json({
       message: "Trip plan created successfully",

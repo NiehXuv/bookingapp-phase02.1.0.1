@@ -1,5 +1,4 @@
-const { database } = require("../../config/firebaseconfig.js");
-const { ref, get, set } = require("firebase/database");
+const { database, get, set } = require("../../config/firebaseconfig.js");
 
 async function markAsRead(req, res) {
   try {
@@ -11,7 +10,7 @@ async function markAsRead(req, res) {
     }
 
     // Get existing notification
-    const notificationRef = ref(database, `Users/${uid}/notifications/${notificationId}`);
+    const notificationRef = `Users/${uid}`/`notifications/${notificationId}`;
     const snapshot = await get(notificationRef);
 
     if (!snapshot.exists()) {

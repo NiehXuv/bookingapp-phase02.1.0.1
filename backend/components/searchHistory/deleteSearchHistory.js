@@ -1,5 +1,4 @@
-const { database } = require("../../config/firebaseconfig.js");
-const { ref, remove } = require("firebase/database");
+const { database, remove } = require("../../config/firebaseconfig.js");
 
 async function deleteSearchHistory(req, res) {
   try {
@@ -10,7 +9,7 @@ async function deleteSearchHistory(req, res) {
       return res.status(400).json({ error: "Search ID is required" });
     }
 
-    const searchHistoryRef = ref(database, `Users/${uid}/searchHistory/${searchId}`);
+    const searchHistoryRef = `Users/${uid}`/`searchHistory/${searchId}`;
     
     // Delete the search history entry
     await remove(searchHistoryRef);

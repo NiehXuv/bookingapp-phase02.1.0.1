@@ -1,5 +1,4 @@
-const { database } = require("../../config/firebaseconfig.js");
-const { ref, get, query, orderByChild, equalTo } = require("firebase/database");
+const { database, get } = require("../../config/firebaseconfig.js");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
@@ -10,29 +9,35 @@ async function login(req, res) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    const usersRef = ref(database, 'Users');
-    // Search for users with the given email in their profile
-    const userQuery = query(usersRef, orderByChild('profile/email'), equalTo(email));
-    const snapshot = await get(userQuery);
+    // Get all users and search for the email
+    const snapshot = await get('Users');
 
     if (!snapshot.exists()) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: 'No users found in database' });
     }
 
     let userData = null;
     let uid = null;
+
+    // Search through all users to find the one with matching email
     snapshot.forEach((childSnapshot) => {
-      uid = childSnapshot.key;
-      userData = childSnapshot.val();
-      console.log("Retrieved user data:", userData);
+      const user = childSnapshot.val();
+      if (user && user.profile && user.profile.email === email) {
+        uid = childSnapshot.key;
+        userData = user;
+        return; // Found the user, stop searching
+      }
     });
+
     if (!uid || !userData) {
-      return res.status(500).json({ error: 'Could not retrieve user details from database.' });
+      return res.status(404).json({ error: 'User not found' });
     }
+
+    console.log("Retrieved user data:", userData);
 
     // Check if user data is stored under profile sub-object
     const profileData = userData.profile || userData;
-    
+
     if (!profileData.password || typeof profileData.password !== 'string') {
       console.error("Password issue:", profileData.password);
       return res.status(500).json({ error: 'Password data is invalid or missing' });

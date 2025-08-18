@@ -1,6 +1,19 @@
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
-const API_BASE_URL = 'http://10.0.2.2:3000/api';
+// Use your computer's IP address for development
+const getApiBaseUrl = () => {
+  if (__DEV__) {
+    // Development environment - using your computer's IP
+    return 'http://192.168.1.62:5000/api';
+  } else {
+    // Production environment - replace with your actual production URL
+    return 'https://your-production-domain.com/api';
+  }
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
+console.log('🔗 AuthService: Using API URL:', API_BASE_URL);
 
 export interface LoginData {
   email: string;
@@ -11,15 +24,21 @@ export interface SignUpData {
   username: string;
   email: string;
   password: string;
+  country: string;
+  phoneNumber: string;
 }
 
+// Updated to match backend response format
 export interface AuthResponse {
   success: boolean;
   message: string;
   user?: {
-    id: string;
+    uid: string;
     username: string;
     email: string;
+    country?: string;
+    phoneNumber?: string;
+    role?: string;
   };
   token?: string;
 }
@@ -27,6 +46,9 @@ export interface AuthResponse {
 class AuthService {
   async login(loginData: LoginData): Promise<AuthResponse> {
     try {
+      console.log('AuthService: Attempting login with:', loginData.email);
+      console.log('AuthService: Using URL:', `${API_BASE_URL}/auth/login`);
+      
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
@@ -36,20 +58,48 @@ class AuthService {
       });
 
       const data = await response.json();
+      console.log('AuthService: Backend response:', data);
 
       if (!response.ok) {
         throw new Error(data.message || 'Login failed');
       }
 
-      return data;
-    } catch (error) {
-      console.error('Login error:', error);
+      // Transform backend response to match frontend expectations
+      return {
+        success: true,
+        message: data.message || 'Login successful',
+        user: {
+          uid: data.user?.uid || data.uid,
+          username: data.user?.profile?.username || data.user?.username,
+          email: data.user?.profile?.email || data.user?.email,
+          country: data.user?.profile?.country,
+          phoneNumber: data.user?.profile?.phoneNumber,
+          role: data.user?.profile?.role
+        },
+        token: data.token
+      };
+    } catch (error: any) {
+      console.error('AuthService: Login error:', error);
+      
+      // Better error handling for network issues
+      if (error?.message?.includes('Network request failed')) {
+        throw new Error(`Cannot connect to backend server. Please check:
+1. Backend server is running on port 5000
+2. You're using the correct IP address
+3. No firewall blocking the connection
+
+Current API URL: ${API_BASE_URL}`);
+      }
+      
       throw error;
     }
   }
 
   async signup(signUpData: SignUpData): Promise<AuthResponse> {
     try {
+      console.log('AuthService: Attempting signup for:', signUpData.email);
+      console.log('AuthService: Using URL:', `${API_BASE_URL}/auth/signup`);
+      
       const response = await fetch(`${API_BASE_URL}/auth/signup`, {
         method: 'POST',
         headers: {
@@ -59,14 +109,39 @@ class AuthService {
       });
 
       const data = await response.json();
+      console.log('AuthService: Backend signup response:', data);
 
       if (!response.ok) {
         throw new Error(data.message || 'Signup failed');
       }
 
-      return data;
-    } catch (error) {
-      console.error('Signup error:', error);
+      // Transform backend response to match frontend expectations
+      return {
+        success: true,
+        message: data.message || 'Signup successful',
+        user: {
+          uid: data.user?.uid || data.uid,
+          username: data.user?.profile?.username || data.user?.username,
+          email: data.user?.profile?.email || data.user?.email,
+          country: data.user?.profile?.country,
+          phoneNumber: data.user?.profile?.phoneNumber,
+          role: data.user?.profile?.role
+        },
+        token: data.token
+      };
+    } catch (error: any) {
+      console.error('AuthService: Signup error:', error);
+      
+      // Better error handling for network issues
+      if (error?.message?.includes('Network request failed')) {
+        throw new Error(`Cannot connect to backend server. Please check:
+1. Backend server is running on port 5000
+2. You're using the correct IP address
+3. No firewall blocking the connection
+
+Current API URL: ${API_BASE_URL}`);
+      }
+      
       throw error;
     }
   }
@@ -75,11 +150,54 @@ class AuthService {
     try {
       // Clear any stored tokens or user data
       // This could involve AsyncStorage or other storage mechanisms
-      console.log('User logged out');
+      console.log('AuthService: User logged out');
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('AuthService: Logout error:', error);
       throw error;
     }
+  }
+
+  // Test backend connection with better error handling
+  async testConnection(): Promise<boolean> {
+    try {
+      console.log('AuthService: Testing connection to:', `${API_BASE_URL}/health`);
+      
+      const response = await fetch(`${API_BASE_URL}/health`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      console.log('AuthService: Health check response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('AuthService: Health check data:', data);
+        return true;
+      } else {
+        console.log('AuthService: Health check failed with status:', response.status);
+        return false;
+      }
+    } catch (error: any) {
+      console.error('AuthService: Connection test failed:', error);
+      
+      // Provide specific error information
+      if (error?.message?.includes('Network request failed')) {
+        console.error(`Network Error Details:
+- API URL: ${API_BASE_URL}
+- Platform: ${Platform.OS}
+- Development Mode: ${__DEV__}
+- Error: ${error?.message}`);
+      }
+      
+      return false;
+    }
+  }
+
+  // Get current API URL for debugging
+  getApiUrl(): string {
+    return API_BASE_URL;
   }
 }
 

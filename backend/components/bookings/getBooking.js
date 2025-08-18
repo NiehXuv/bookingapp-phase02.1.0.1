@@ -1,5 +1,4 @@
-const { database } = require("../../config/firebaseconfig.js");
-const { ref, get } = require("firebase/database");
+const { database, get } = require("../../config/firebaseconfig.js");
 
 async function getBooking(req, res) {
   try {
@@ -10,7 +9,7 @@ async function getBooking(req, res) {
       return res.status(400).json({ error: "Booking ID is required" });
     }
 
-    const bookingRef = ref(database, `Users/${uid}/bookings/${bookingId}`);
+    const bookingRef = `Users/${uid}`/`bookings/${bookingId}`;
     const snapshot = await get(bookingRef);
 
     if (!snapshot.exists()) {

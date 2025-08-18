@@ -1,12 +1,11 @@
-const { database } = require("../../config/firebaseconfig.js");
-const { ref, get } = require("firebase/database");
+const { database, get } = require("../../config/firebaseconfig.js");
 
 async function getFavorites(req, res) {
   try {
     const { uid } = req.user; // From JWT token
     const { type } = req.query; // Optional filter by type
 
-    const favoritesRef = ref(database, `Users/${uid}/favorites`);
+    const favoritesRef = `Users/${uid}`/favorites;
     const snapshot = await get(favoritesRef);
 
     if (!snapshot.exists()) {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform, Dimensions, Modal } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform, Dimensions, Modal, ScrollView } from 'react-native';
 import { MaterialIcons, Feather } from '@expo/vector-icons';
 import Svg, { Ellipse, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { FontAwesome } from '@expo/vector-icons';
@@ -88,7 +88,9 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
   const closeSuccessModal = () => {
     setSuccessModalVisible(false);
     setSuccessMessage('');
-    navigation.replace('Main');
+    if (successMessage.includes('Login successful')) {
+      navigation.replace('Main');
+    }
   };
 
   return (
@@ -136,70 +138,74 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
         style={StyleSheet.absoluteFill}
       />
       {/* Main content */}
-      <View style={styles.container}>
-        
-        <Text style={styles.title}>Sign In</Text>
-        <View style={styles.inputContainer}>
-          <View style={styles.inputWrapper}>
-            <MaterialIcons name="email" size={22} color="rgba(76,188,113,0.7)" style={styles.inputIcon} />
-            <TextInput
-              placeholder="Email"
-              placeholderTextColor="rgba(0,28,7,0.3)"
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <View style={styles.container}>
+          
+          <Text style={styles.title}>Sign In</Text>
+          
+          <View style={styles.inputContainer}>
+            <View style={styles.inputWrapper}>
+              <MaterialIcons name="email" size={22} color="rgba(76,188,113,0.7)" style={styles.inputIcon} />
+              <TextInput
+                placeholder="Email"
+                placeholderTextColor="rgba(0,28,7,0.3)"
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+            <View style={styles.inputWrapper}>
+              <Feather name="lock" size={22} color="rgba(76,188,113,0.7)" style={styles.inputIcon} />
+              <TextInput
+                placeholder="Password"
+                placeholderTextColor="rgba(0,28,7,0.3)"
+                style={styles.input}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                <Feather name={showPassword ? "eye" : "eye-off"} size={20} color="rgba(76,188,113,0.7)" />
+              </TouchableOpacity>
+            </View>
           </View>
-          <View style={styles.inputWrapper}>
-            <Feather name="lock" size={22} color="rgba(76,188,113,0.7)" style={styles.inputIcon} />
-            <TextInput
-              placeholder="Password"
-              placeholderTextColor="rgba(0,28,7,0.3)"
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-            />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-              <Feather name={showPassword ? "eye" : "eye-off"} size={20} color="rgba(76,188,113,0.7)" />
+          
+          <TouchableOpacity style={styles.forgotPassword}>
+            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.button, loading && styles.buttonDisabled]} 
+            onPress={handleLogin} 
+            activeOpacity={0.8}
+            disabled={loading}
+          >
+            <Text style={styles.buttonText}>
+              {loading ? 'Signing In...' : 'Sign In'}
+            </Text>
+          </TouchableOpacity>
+          
+          <View style={styles.orContainer}>
+            <View style={styles.line} />
+            <Text style={styles.orText}>or continue with</Text>
+            <View style={styles.line} />
+          </View>
+          <View style={styles.socialContainer}>
+            <TouchableOpacity style={styles.socialButton}>
+              <FontAwesome name="google" size={26} color="#EA4335" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.socialButton}>
+              <FontAwesome name="facebook" size={26} color="#1877F3" />
             </TouchableOpacity>
           </View>
-        </View>
-        <TouchableOpacity style={styles.forgotPassword}>
-          <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.button, loading && styles.buttonDisabled]} 
-          onPress={handleLogin} 
-          activeOpacity={0.8}
-          disabled={loading}
-        >
-          <Text style={styles.buttonText}>
-            {loading ? 'Signing In...' : 'Sign In'}
-          </Text>
-        </TouchableOpacity>
-        
-        <View style={styles.orContainer}>
-          <View style={styles.line} />
-          <Text style={styles.orText}>or continue with</Text>
-          <View style={styles.line} />
-        </View>
-        <View style={styles.socialContainer}>
-          <TouchableOpacity style={styles.socialButton}>
-            <FontAwesome name="google" size={26} color="#EA4335" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.socialButton}>
-            <FontAwesome name="facebook" size={26} color="#1877F3" />
+          <TouchableOpacity style={styles.signupContainer} onPress={() => navigation.navigate('SignUp')}>
+            <Text style={styles.signupText}>
+              Don't have an account? <Text style={styles.signupLink}>Sign Up</Text>
+            </Text>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.signupContainer} onPress={() => navigation.navigate('SignUp')}>
-          <Text style={styles.signupText}>
-            Don't have an account? <Text style={styles.signupLink}>Sign Up</Text>
-          </Text>
-        </TouchableOpacity>
-      </View>
+      </ScrollView>
 
       {/* Custom Error Modal */}
       <MessageModal
@@ -222,6 +228,10 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
 }
 
 const styles = StyleSheet.create({
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
   container: {
     flex: 1,
     paddingHorizontal: 32,
@@ -232,7 +242,7 @@ const styles = StyleSheet.create({
     fontSize: 40,
     fontWeight: '700',
     textAlign: 'left',
-    marginBottom: 32,
+    marginBottom: 16,
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : undefined,
   },
   inputContainer: {

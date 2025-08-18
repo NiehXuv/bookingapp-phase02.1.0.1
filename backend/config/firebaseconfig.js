@@ -1,18 +1,17 @@
-const { initializeApp, cert } = require('firebase-admin/app');
-const { getDatabase } = require('firebase-admin/database');
-const { getAuth } = require('firebase-admin/auth');
 const admin = require('firebase-admin');
+
+// Load the service account key
 const serviceAccount = require('../serviceAccountKey.json');
 
 // Initialize Firebase Admin SDK
-const firebaseApp = initializeApp({
+const firebaseApp = admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: "https://ai-planner-booking-default-rtdb.asia-southeast1.firebasedatabase.app/",
 });
 
 // Get Admin SDK instances
-const adminDatabase = getDatabase(firebaseApp);
-const adminAuth = getAuth(firebaseApp);
+const adminDatabase = admin.database(firebaseApp);
+const adminAuth = admin.auth(firebaseApp);
 
 // Export Admin SDK instances with aliases that components expect
 module.exports = { 
@@ -22,10 +21,11 @@ module.exports = {
   // Export aliases that components expect
   auth: adminAuth,
   database: adminDatabase,
-  // Export Firebase functions for components (using Admin SDK)
-  ref: (path) => adminDatabase.ref(path),
-  set: (ref, data) => ref.set(data),
-  push: (ref, data) => ref.push(data),
-  get: (ref) => ref.get(),
-  remove: (ref) => ref.remove()
+  // Export Firebase functions for components (using Admin SDK directly)
+  // Note: Components should use adminDatabase.ref() directly instead of this ref function
+  set: (path, data) => adminDatabase.ref(path).set(data),
+  push: (path, data) => adminDatabase.ref(path).push(data),
+  get: (path) => adminDatabase.ref(path).get(),
+  remove: (path) => adminDatabase.ref(path).remove(),
+  update: (path, data) => adminDatabase.ref(path).update(data)
 };

@@ -1,12 +1,11 @@
-const { database } = require("../../config/firebaseconfig.js");
-const { ref, get } = require("firebase/database");
+const { database, get } = require("../../config/firebaseconfig.js");
 
 async function getNotifications(req, res) {
   try {
     const { uid } = req.user; // From JWT token
     const { type, read, limit = 50 } = req.query; // Optional filters
 
-    const notificationsRef = ref(database, `Users/${uid}/notifications`);
+    const notificationsRef = `Users/${uid}`/notifications;
     const snapshot = await get(notificationsRef);
 
     if (!snapshot.exists()) {

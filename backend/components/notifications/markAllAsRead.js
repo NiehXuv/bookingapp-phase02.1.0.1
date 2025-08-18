@@ -1,11 +1,10 @@
-const { database } = require("../../config/firebaseconfig.js");
-const { ref, get, set } = require("firebase/database");
+const { database, get, set } = require("../../config/firebaseconfig.js");
 
 async function markAllAsRead(req, res) {
   try {
     const { uid } = req.user; // From JWT token
 
-    const notificationsRef = ref(database, `Users/${uid}/notifications`);
+    const notificationsRef = `Users/${uid}`/notifications;
     const snapshot = await get(notificationsRef);
 
     if (!snapshot.exists()) {
@@ -23,7 +22,7 @@ async function markAllAsRead(req, res) {
       
       // Only update unread notifications
       if (!notificationData.read) {
-        const notificationRef = ref(database, `Users/${uid}/notifications/${notificationId}`);
+        const notificationRef = `Users/${uid}`/`notifications/${notificationId}`;
         const updatedNotification = {
           ...notificationData,
           read: true,

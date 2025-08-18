@@ -1,5 +1,4 @@
-const { database } = require("../../config/firebaseconfig.js");
-const { ref, set, push } = require("firebase/database");
+const { database, ref, set, push } = require("../../config/firebaseconfig.js");
 
 async function createNotification(req, res) {
   try {
@@ -31,11 +30,11 @@ async function createNotification(req, res) {
     };
 
     // Create new notification with auto-generated ID
-    const notificationsRef = ref(database, `Users/${uid}/notifications`);
+    const notificationsRef = `Users/${uid}`/notifications;
     const newNotificationRef = push(notificationsRef);
     const notificationId = newNotificationRef.key;
 
-    await set(newNotificationRef, notificationData);
+    await set(`notifications/${notificationId}`, notificationData);
 
     res.status(201).json({
       message: "Notification created successfully",

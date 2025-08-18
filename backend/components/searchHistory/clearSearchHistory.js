@@ -1,11 +1,10 @@
-const { database } = require("../../config/firebaseconfig.js");
-const { ref, remove } = require("firebase/database");
+const { database, remove } = require("../../config/firebaseconfig.js");
 
 async function clearSearchHistory(req, res) {
   try {
     const { uid } = req.user; // From JWT token
 
-    const searchHistoryRef = ref(database, `Users/${uid}/searchHistory`);
+    const searchHistoryRef = `Users/${uid}`/searchHistory;
     
     // Clear all search history
     await remove(searchHistoryRef);
