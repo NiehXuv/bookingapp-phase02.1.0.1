@@ -1,4 +1,4 @@
-const { database } = require("../config/firebaseconfig.js");
+const { database } = require("../../config/firebaseconfig.js");
 const { ref, update, get, query, orderByChild, equalTo } = require("firebase/database");
 const axios = require('axios');
 

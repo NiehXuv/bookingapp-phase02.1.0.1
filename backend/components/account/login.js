@@ -1,4 +1,4 @@
-const { database } = require("../config/firebaseconfig.js");
+const { database } = require("../../config/firebaseconfig.js");
 const { ref, get, query, orderByChild, equalTo } = require("firebase/database");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -11,7 +11,8 @@ async function login(req, res) {
     }
 
     const usersRef = ref(database, 'Users');
-    const userQuery = query(usersRef, orderByChild('email'), equalTo(email));
+    // Search for users with the given email in their profile
+    const userQuery = query(usersRef, orderByChild('profile/email'), equalTo(email));
     const snapshot = await get(userQuery);
 
     if (!snapshot.exists()) {
@@ -29,12 +30,15 @@ async function login(req, res) {
       return res.status(500).json({ error: 'Could not retrieve user details from database.' });
     }
 
-    if (!userData.password || typeof userData.password !== 'string') {
-      console.error("Password issue:", userData.password);
+    // Check if user data is stored under profile sub-object
+    const profileData = userData.profile || userData;
+    
+    if (!profileData.password || typeof profileData.password !== 'string') {
+      console.error("Password issue:", profileData.password);
       return res.status(500).json({ error: 'Password data is invalid or missing' });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, userData.password);
+    const isPasswordValid = await bcrypt.compare(password, profileData.password);
     if (!isPasswordValid) {
       return res.status(401).json({ error: 'Invalid password' });
     }
@@ -50,9 +54,11 @@ async function login(req, res) {
     res.status(200).json({
       message: 'Login successful',
       user: {
-        username: userData.username,
-        email: userData.email,
-        phoneNumber: userData.phoneNumber, // Fixed typo
+        uid: uid,
+        username: profileData.username,
+        email: profileData.email,
+        country: profileData.country,
+        phoneNumber: profileData.phoneNumber,
       },
       token: token,
     });

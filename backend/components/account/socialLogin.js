@@ -1,5 +1,5 @@
 // components/Account/socialLogin.js
-const { auth, database } = require("../config/firebaseconfig.js");
+const { auth, database } = require("../../config/firebaseconfig.js");
 const { signInWithPopup, GoogleAuthProvider, FacebookAuthProvider } = require("firebase/auth");
 const { ref, set, get } = require("firebase/database");
 

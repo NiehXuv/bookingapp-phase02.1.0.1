@@ -29,7 +29,12 @@ app.get('/api/health', (req, res) => {
 
 // API routes
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/trip-plans', require('./routes/tripPlans'));
 app.use('/api/bookings', require('./routes/bookings'));
+app.use('/api/search-history', require('./routes/searchHistory'));
+app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/favorites', require('./routes/favorites'));
+app.use('/api/user-profile', require('./routes/userProfile'));
 app.use('/api/users', require('./routes/users'));
 
 // Error handling middleware

@@ -1,40 +1,55 @@
-const { auth, database } = require("../config/firebaseconfig.js");
+const { auth, database } = require("../../config/firebaseconfig.js");
 const { ref, set } = require("firebase/database");
 const bcrypt = require("bcrypt");
 
 // Simple validation functions
-const isValidE164PhoneNumber = (phoneNumber) => {
-  const e164Regex = /^\+[1-9]\d{1,14}$/;
-  return e164Regex.test(phoneNumber);
-};
-
 const isValidEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 };
 
-async function createAccount(req, res) {
-  const { username, password, email, phoneNumber } = req.body;
+const isValidCountryCode = (country) => {
+  // ISO 3166-1 alpha-2 country codes (2 letters)
+  const countryRegex = /^[A-Z]{2}$/;
+  return countryRegex.test(country);
+};
 
-  if (!username || !password || !email || !phoneNumber) {
-    return res.status(400).json({ error: "All fields are required" });
+const isValidPhoneNumber = (phoneNumber, country) => {
+  // Remove any spaces, dashes, or parentheses
+  const cleanPhone = phoneNumber.replace(/[\s\-\(\)]/g, '');
+  
+  // Basic validation - just numbers, no country code
+  const phoneRegex = /^\d{7,15}$/;
+  return phoneRegex.test(cleanPhone);
+};
+
+async function createAccount(req, res) {
+  const { username, password, email, country, phoneNumber } = req.body;
+
+  if (!username || !password || !email || !country || !phoneNumber) {
+    return res.status(400).json({ error: "All fields are required: username, password, email, country, phoneNumber" });
   }
 
   if (!isValidEmail(email)) {
     return res.status(400).json({ error: "Invalid email format" });
   }
 
-  if (!isValidE164PhoneNumber(phoneNumber)) {
-    return res.status(400).json({ error: "Phone number must be in E.164 format (e.g., +12345678901)" });
+  if (!isValidCountryCode(country)) {
+    return res.status(400).json({ error: "Invalid country code. Use ISO 3166-1 alpha-2 format (e.g., US, VN, GB)" });
+  }
+
+  if (!isValidPhoneNumber(phoneNumber, country)) {
+    return res.status(400).json({ error: `Invalid phone number format for ${country}. Please use local format without country code.` });
   }
 
   try {
     // Create user in Firebase Authentication (password is hashed internally)
+    // Note: Firebase Auth requires E.164 phone format, but we'll store local format in database
     const userRecord = await auth.createUser({
       email: email,
       password: password,
       displayName: username,
-      phoneNumber: phoneNumber,
+      // Don't set phoneNumber in Firebase Auth for now - we'll store it in Realtime Database
     });
 
     const uid = userRecord.uid;
@@ -43,10 +58,15 @@ async function createAccount(req, res) {
     // Store user data in Realtime Database with hashed password
     const userRef = ref(database, `Users/${uid}`);
     await set(userRef, {
-      username: username,
-      password: hashedPassword, // Store the hashed password
-      email: email,
-      phoneNumber: phoneNumber,
+      profile: {
+        username: username,
+        password: hashedPassword, // Store the hashed password
+        email: email,
+        country: country,
+        phoneNumber: phoneNumber,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      }
     });
 
     console.log("User created with hashed password:", hashedPassword);

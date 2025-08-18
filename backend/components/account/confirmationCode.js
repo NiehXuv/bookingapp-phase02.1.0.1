@@ -1,4 +1,4 @@
-const { database } = require("../config/firebaseconfig.js");
+const { database } = require("../../config/firebaseconfig.js");
 const { ref, set, get, update } = require("firebase/database");
 
 async function storeConfirmationCode(req, res) {
