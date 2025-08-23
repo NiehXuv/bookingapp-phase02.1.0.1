@@ -430,7 +430,41 @@ const styles = StyleSheet.create({
 const DetailScreen: React.FC = () => {
 	const navigation = useNavigation();
 	const route = useRoute();
+	
+	// Add logging to debug navigation issues
+	console.log('🔍 ContentDetailScreen: Route params received:', route.params);
+	console.log('🔍 ContentDetailScreen: Route params type:', typeof route.params);
+	
 	const { item } = route.params as { item: ContentItem };
+	
+	// Add validation for item
+	if (!item) {
+		console.error('❌ ContentDetailScreen: No item received in route params');
+		return (
+			<View style={styles.container}>
+				<View style={styles.header}>
+					<TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+						<ArrowLeft size={24} color="#000" />
+					</TouchableOpacity>
+				</View>
+				<View style={styles.errorContainer}>
+					<Text style={styles.errorText}>No content item received</Text>
+					<TouchableOpacity style={styles.retryButton} onPress={() => navigation.goBack()}>
+						<Text style={styles.retryButtonText}>Go Back</Text>
+					</TouchableOpacity>
+				</View>
+			</View>
+		);
+	}
+	
+	console.log('✅ ContentDetailScreen: Item received:', {
+		id: item.id,
+		title: item.title,
+		source: item.source,
+		imageUrl: item.imageUrl,
+		hasDescription: !!item.description
+	});
+	
 	const { getRelatedContent, contentPool, addToContentPool } = useContentContext();
 	
 	// Related content state

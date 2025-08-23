@@ -11,7 +11,7 @@ import BookingScreen from '../screens/BookingScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import HotelDetailScreen from '../screens/HotelDetailScreen';
 import PlaceDetailScreen from '../screens/PlaceDetailScreen';
-import DetailScreen from '../screens/DetailScreen';
+import DetailScreen from '../screens/ContentDetailScreen';
 import LoginScreen from '../screens/LoginScreen';
 import SignUpScreen from '../screens/SignUpScreen';
 

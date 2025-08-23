@@ -27,6 +27,50 @@ export class EnhancedPlaceService {
       throw new Error('Failed to get place details');
     }
   }
+
+  // New method for handling tour data directly
+  async getTourDetails(tourData: any, coordinates: any): Promise<EnhancedPlace> {
+    try {
+      console.log('🎯 EnhancedPlaceService: Processing tour data directly');
+      
+      // Transform tour data to EnhancedPlace format
+      const enhancedPlace: EnhancedPlace = {
+        id: tourData.id || `tour_${Date.now()}`,
+        name: tourData.name || 'Tour Experience',
+        type: tourData.type || 'Tour',
+        address: tourData.address || 'Vietnam',
+        coordinates: coordinates,
+        rating: tourData.rating || 4.0,
+        photos: tourData.photos || ['https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop'],
+        description: tourData.description || 'No description available.',
+        amenities: tourData.amenities || ['Tour', 'Experience', 'Local Guide'],
+        openingHours: tourData.openingHours || ['Open daily'],
+        tourOptions: tourData.tourOptions || [{
+          id: tourData.id || `tour_${Date.now()}`,
+          name: tourData.name || 'Tour Experience',
+          price: tourData.price || 500000,
+          currency: 'VND',
+          duration: '2-3 hours',
+          description: tourData.description || 'Experience this amazing tour.',
+          provider: 'Local Tours'
+        }],
+        reviews: tourData.reviews || [{
+          id: '1',
+          author: 'Local Guide',
+          date: 'Recent',
+          text: 'Highly recommended experience!',
+          rating: 5,
+          helpful: 12
+        }],
+        ticketsAvailable: true
+      };
+      
+      return enhancedPlace;
+    } catch (error) {
+      console.error('❌ Error processing tour data:', error);
+      throw new Error('Failed to process tour data');
+    }
+  }
   
   private mergePlaceData(google: any, tripAdvisor: any): EnhancedPlace {
     // Transform Google reviews to our format if available

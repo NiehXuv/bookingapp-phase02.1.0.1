@@ -13,9 +13,6 @@ import HomeScreen from './src/screens/HomeScreen';
 // import other screens as needed
 import CustomTabBar from './src/components/CustomTabBar';
 import ChatbotWrapper from './src/components/ChatbotWrapper';
-import HotelSearchScreen from './src/screens/HotelSearchScreen';
-import TransportSearchScreen from './src/screens/TransportSearchScreen';
-import TourSearchScreen from './src/screens/TourSearchScreen';
 import PlanScreen from './src/screens/PlanScreen';
 import InboxScreen from './src/screens/InboxScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
@@ -24,7 +21,10 @@ import HotelDetailScreen from './src/screens/HotelDetailScreen';
 import PlaceDetailScreen from './src/screens/PlaceDetailScreen';
 import SearchTransportResultScreen from './src/screens/SearchTransportResultScreen';
 import SearchTourResultScreen from './src/screens/SearchTourResultScreen';
-import DetailScreen from './src/screens/DetailScreen';
+import DetailScreen from './src/screens/ContentDetailScreen';
+import UniversalSearchScreen from './src/screens/UniversalSearchScreen';
+import SearchContentResultScreen from './src/screens/SearchContentResultScreen';
+import TransportDetailScreen from './src/screens/TransportDetailScreen';
 import PlanningFlowNavigator from './src/screens/planning/PlanningFlowNavigator';
 import PlanningSummaryScreen from './src/screens/planning/PlanningSummaryScreen';
 import PlanningResultScreen from './src/screens/planning/PlanningResultScreen';
@@ -34,6 +34,7 @@ import ExploreScreen from './src/screens/ExploreScreen';
 // Context
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ContentProvider } from './src/context/ContentContext';
+import { SearchProvider } from './src/context/SearchContext';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -67,15 +68,15 @@ function RootNavigator() {
         ) : (
           <>
             <Stack.Screen name="Main" component={MainTabs} />
-            <Stack.Screen name="HotelSearch" component={HotelSearchScreen} />
-            <Stack.Screen name="TransportSearch" component={TransportSearchScreen} />
-            <Stack.Screen name="TourSearch" component={TourSearchScreen} />
+            <Stack.Screen name="UniversalSearch" component={UniversalSearchScreen} />
+            <Stack.Screen name="SearchContentResult" component={SearchContentResultScreen} />
             <Stack.Screen name="SearchHotelResult" component={SearchHotelResultScreen} />
-            <Stack.Screen name="HotelDetailScreen" component={HotelDetailScreen as any} />
-            <Stack.Screen name="PlaceDetailScreen" component={PlaceDetailScreen as any} />
             <Stack.Screen name="SearchTransportResult" component={SearchTransportResultScreen} />
             <Stack.Screen name="SearchTourResult" component={SearchTourResultScreen} />
+            <Stack.Screen name="HotelDetailScreen" component={HotelDetailScreen as any} />
+            <Stack.Screen name="PlaceDetailScreen" component={PlaceDetailScreen as any} />
             <Stack.Screen name="DetailScreen" component={DetailScreen} />
+            <Stack.Screen name="TransportDetailScreen" component={TransportDetailScreen as any} />
             <Stack.Screen name="PlanningFlow" component={PlanningFlowNavigator} />
             <Stack.Screen name="PlanningSummary" component={PlanningSummaryScreen} />
             <Stack.Screen name="PlanningResult" component={PlanningResultScreen} />
@@ -93,10 +94,12 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
         <ContentProvider>
-          <NavigationContainer>
-            <StatusBar />
-            <RootNavigator />
-          </NavigationContainer>
+          <SearchProvider>
+            <NavigationContainer>
+              <StatusBar />
+              <RootNavigator />
+            </NavigationContainer>
+          </SearchProvider>
         </ContentProvider>
       </AuthProvider>
     </GestureHandlerRootView>

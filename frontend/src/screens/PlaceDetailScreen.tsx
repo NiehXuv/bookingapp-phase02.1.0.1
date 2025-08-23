@@ -38,6 +38,9 @@ const PlaceDetailScreen: React.FC<PlaceDetailScreenProps> = ({ route, navigation
   const [selectedTour, setSelectedTour] = useState<string | null>(null);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   
+  // Debug logging
+  console.log('🎯 PlaceDetailScreen: Received params:', { placeId, placeData, coordinates });
+  
   useEffect(() => {
     loadPlaceDetails();
   }, [placeId]);
@@ -47,13 +50,25 @@ const PlaceDetailScreen: React.FC<PlaceDetailScreenProps> = ({ route, navigation
       setIsLoading(true);
       const placeService = new EnhancedPlaceService();
       
-      // Try to get enhanced details, fallback to mock data if API fails
       let details: EnhancedPlace;
-      try {
-        details = await placeService.getPlaceDetails(placeId, coordinates);
-      } catch (error) {
-        console.log('Falling back to mock data:', error);
-        details = await placeService.getMockPlaceDetails(placeId);
+      
+      // Check if we have placeData (tour data) or need to fetch from API
+      if (placeData) {
+        console.log('🎯 PlaceDetailScreen: Using provided tour data');
+        try {
+          details = await placeService.getTourDetails(placeData, coordinates);
+        } catch (error) {
+          console.log('Falling back to mock data for tour:', error);
+          details = await placeService.getMockPlaceDetails(placeId);
+        }
+      } else {
+        console.log('🎯 PlaceDetailScreen: Fetching place details from API');
+        try {
+          details = await placeService.getPlaceDetails(placeId, coordinates);
+        } catch (error) {
+          console.log('Falling back to mock data for place:', error);
+          details = await placeService.getMockPlaceDetails(placeId);
+        }
       }
       
       setEnhancedPlace(details);

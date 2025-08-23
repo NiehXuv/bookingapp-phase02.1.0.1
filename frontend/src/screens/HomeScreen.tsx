@@ -1,14 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, Image, TextInput, TouchableOpacity, ScrollView, Dimensions, StyleSheet, Modal, Pressable, Share as RnShare, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { Search, Bell, Heart, MessageCircle, MoreHorizontal, Share2, Pin as PinIcon, UserPlus, Flag, Play, X } from 'lucide-react-native';
+import { Search, Bell, Heart, MessageCircle, MoreHorizontal, Share2, Pin as PinIcon, UserPlus, Flag, Play } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
-import { youtubeService } from '../services/youtubeService';
-import { tripAdvisorService } from '../services/tripadvisorService';
-import { pixabayService } from '../services/pixabayService';
-import { pexelsService } from '../services/pexelsService';
 import { contentService } from '../services/contentService';
-import { transformMockToContent, formatEngagement, formatRelativeTime } from '../utils/contentTransformer';
+import { transformMockToContent, formatEngagement } from '../utils/contentTransformer';
 import { ContentItem } from '../types/content';
 import { useContentContext } from '../context/ContentContext';
 
@@ -56,17 +52,7 @@ const HomeScreen: React.FC = () => {
 	// Track seen content IDs to prevent duplicates
 	const [seenContentIds, setSeenContentIds] = useState<Set<string>>(new Set());
 	
-	// Search functionality
-	const [searchQuery, setSearchQuery] = useState('');
-	const [isSearchActive, setIsSearchActive] = useState(false);
-	const [searchFilters, setSearchFilters] = useState({
-		source: [] as string[],
-		category: [] as string[],
-		dateRange: 'all' as 'all' | 'today' | 'week' | 'month',
-		sortBy: 'relevance' as 'relevance' | 'date' | 'popularity'
-	});
-	const [filteredContent, setFilteredContent] = useState<ContentItem[]>([]);
-	const [isSearching, setIsSearching] = useState(false);
+	// Infinite scroll and bottom tracking
 	const [isLoadingMore, setIsLoadingMore] = useState(false);
 	const [hasMoreContent, setHasMoreContent] = useState(true);
 	const [lastLoadTime, setLastLoadTime] = useState(0);
@@ -165,28 +151,14 @@ const HomeScreen: React.FC = () => {
 
 	// Load content on mount and tab change only
 	useEffect(() => {
-		// Only fetch if we don't have content or if tab changed
 		if (content.length === 0 || activeTab !== prevActiveTab.current) {
-			// Reset content hash for new tab
-			// setLastContentHash(''); // Removed as per edit hint
-		fetchContent();
+			fetchContent();
 			prevActiveTab.current = activeTab;
 		}
 	}, [activeTab]);
 	
 	// Track previous active tab to prevent unnecessary reloads
 	const prevActiveTab = useRef(activeTab);
-
-	// Remove auto-search - only search when button is clicked
-	// useEffect(() => {
-	// 	console.log('🔍 Search effect triggered:', { searchQuery, searchFiltersLength: Object.keys(searchFilters).length });
-	// 	if (searchQuery.trim()) {
-	// 		performSearch(searchQuery, searchFilters);
-	// 	} else {
-	// 		setIsSearchActive(false);
-	// 		setFilteredContent([]);
-	// 	}
-	// }, [searchQuery, searchFilters, content]);
 
 	// Refresh content
 	const handleRefresh = async () => {
@@ -298,7 +270,7 @@ const HomeScreen: React.FC = () => {
 
 	// Load more content for infinite scroll
 	const loadMoreContent = async () => {
-		if (isLoadingMore || !hasMoreContent || isSearchActive) return;
+		if (isLoadingMore || !hasMoreContent) return;
 		
 		console.log(`🔄 Infinite scroll: loadMoreContent triggered (content: ${content.length}, hasMore: ${hasMoreContent})`);
 		
@@ -434,400 +406,6 @@ const HomeScreen: React.FC = () => {
 		} finally {
 			setIsLoadingMore(false);
 		}
-	};
-
-	// Search and filter functions
-	const performSearch = async (query: string, filters: typeof searchFilters) => {
-		if (!query.trim()) {
-			setFilteredContent([]);
-			setIsSearchActive(false);
-			setIsSearching(false);
-			return;
-		}
-
-		setIsSearchActive(true);
-		setIsSearching(true);
-		
-		try {
-			// Fetch new content based on search query
-			const searchResults = await fetchSearchContent(query, filters);
-			setFilteredContent(searchResults);
-		} catch (error) {
-			console.error('Search error:', error);
-			// Fallback to filtering existing content
-			const filtered = filterExistingContent(query, filters);
-			setFilteredContent(filtered);
-		} finally {
-			setIsSearching(false);
-		}
-	};
-
-	// Fetch new content based on search query
-	const fetchSearchContent = async (query: string, filters: typeof searchFilters) => {
-		// Enhanced search query optimization
-		const normalizedQuery = query.toLowerCase().trim();
-		
-		// Create intelligent search terms
-		const words = normalizedQuery.split(' ').filter(word => word.length > 1);
-		const searchTerms = [
-			normalizedQuery, // Full query: "hạ long bay"
-			...words, // Individual words: ["hạ", "long", "bay"]
-			normalizedQuery.normalize('NFD').replace(/[\u0300-\u036f]/g, ''), // Without diacritics: "ha long bay"
-			...words.map(word => word.normalize('NFD').replace(/[\u0300-\u036f]/g, '')), // Individual words without diacritics
-		].filter((term, index, array) => array.indexOf(term) === index); // Remove duplicates
-	
-		// Determine which sources to search
-		const sourcesToSearch = filters.source.length > 0 ? filters.source : ['YouTube Shorts', 'TripAdvisor', 'Pixabay', 'Pexels'];
-		
-		// Fetch content from each source with search query
-		const allSearchResults: ContentItem[] = [];
-		
-		for (const source of sourcesToSearch) {
-			try {
-				let sourceResults: ContentItem[] = [];
-				
-								switch (source) {
-					case 'YouTube Shorts':
-						// Search YouTube with the query - use existing method and filter
-						const youtubeResults = await youtubeService.fetchVietnamTravelShorts(20); // Reduced from 30
-						
-						// Filter results that match any of the search terms - be more lenient
-						sourceResults = youtubeResults
-							.filter(video => {
-								const title = video.title.toLowerCase();
-								const description = video.description ? video.description.toLowerCase() : '';
-								
-								// Check if any search term matches
-								const hasMatch = searchTerms.some(term => 
-									title.includes(term) || description.includes(term)
-								);
-								
-								return hasMatch;
-							})
-							.map(video => ({
-								id: video.id,
-								title: video.title,
-								description: video.description,
-								imageUrl: video.thumbnailUrl,
-								source: 'YouTube Shorts' as const,
-								originalUrl: `https://www.youtube.com/watch?v=${video.id}`,
-								engagement: {
-									likes: parseInt(video.likeCount || '0'),
-									comments: parseInt(video.commentCount || '0'),
-									views: parseInt(video.viewCount || '0'),
-									shares: 0
-								},
-								isShort: video.isShort,
-								duration: video.duration,
-								channelTitle: video.channelTitle,
-								publishedAt: video.publishedAt,
-								playButton: video.isShort
-							}));
-						break;
-						
-										case 'TripAdvisor':
-						// Search TripAdvisor with the query - use existing method and filter
-						const tripAdvisorResults = await tripAdvisorService.fetchVietnamTravelContent(20); // Reduced from 30
-						
-						// Filter results that match any of the search terms - be more lenient
-						sourceResults = tripAdvisorResults
-							.filter(location => {
-								const title = location.title.toLowerCase();
-								const description = location.description ? location.description.toLowerCase() : '';
-								const locationString = location.locationString ? location.locationString.toLowerCase() : '';
-								
-								// Check if any search term matches
-								const hasMatch = searchTerms.some(term => 
-									title.includes(term) || description.includes(term) || locationString.includes(term)
-								);
-								
-								return hasMatch;
-							})
-							.map(location => ({
-								id: location.id,
-								title: location.title,
-								description: location.description,
-								imageUrl: location.imageUrl,
-								source: 'TripAdvisor' as const,
-								originalUrl: location.permalink,
-								engagement: {
-									likes: parseInt(location.likeCount || '0'),
-									comments: parseInt(location.commentCount || '0'),
-									views: 0,
-									shares: parseInt(location.shareCount || '0')
-								},
-								isShort: false,
-								duration: undefined,
-								channelTitle: location.authorName,
-								publishedAt: location.publishedAt,
-								playButton: false
-							}));
-						break;
-						
-										case 'Pixabay':
-						// Search Pixabay with the query - use existing method and filter
-						const pixabayResults = await pixabayService.fetchVietnamTravelImages(20); // Reduced from 30
-						
-						// Filter results that match any of the search terms - be more lenient
-						sourceResults = pixabayResults
-							.filter(image => {
-								const title = image.title ? image.title.toLowerCase() : '';
-								const description = image.description ? image.description.toLowerCase() : '';
-								const tags = image.tags || [];
-								
-								// Check if any search term matches
-								const hasMatch = searchTerms.some(term => 
-									title.includes(term) || description.includes(term) || tags.some(tag => tag.toLowerCase().includes(term))
-								);
-								
-								return hasMatch;
-							})
-							.map(image => ({
-								id: image.id,
-								title: image.title,
-								description: image.description,
-								imageUrl: image.imageUrl,
-								source: 'Pixabay' as const,
-								originalUrl: image.permalink,
-								engagement: {
-									likes: parseInt(image.likeCount || '0'),
-									comments: parseInt(image.commentCount || '0'),
-									views: image.views || 0,
-									shares: 0
-								},
-								isShort: false,
-								duration: undefined,
-								channelTitle: image.authorName,
-								publishedAt: image.publishedAt,
-								playButton: false
-							}));
-						break;
-				}
-				
-				// Apply category filtering if specified
-				if (filters.category.length > 0) {
-					sourceResults = sourceResults.filter(item => 
-						filters.category.some(cat => 
-							item.title.toLowerCase().includes(cat.toLowerCase()) ||
-							(item.description && item.description.toLowerCase().includes(cat.toLowerCase()))
-						)
-					);
-				}
-				
-				allSearchResults.push(...sourceResults);
-				
-			} catch (error) {
-				console.error(`Error searching ${source}:`, error);
-			}
-		}
-		
-		// If no results found, try a broader search
-		if (allSearchResults.length === 0) {
-			// Try searching with just the first word or a broader term
-			const broaderTerm = searchTerms[0]; // Use first search term
-			if (broaderTerm.length > 2) { // Only if it's meaningful
-				// Re-run search with broader term for each source
-				for (const source of sourcesToSearch) {
-					try {
-						let broaderResults: ContentItem[] = [];
-						switch (source) {
-							case 'YouTube Shorts':
-								const youtubeBroader = await youtubeService.fetchVietnamTravelShorts(15); // Reduced from 20
-								broaderResults = youtubeBroader
-									.filter(video => 
-										video.title.toLowerCase().includes(broaderTerm) ||
-										(video.description && video.description.toLowerCase().includes(broaderTerm))
-									)
-									.map(video => ({
-										id: video.id,
-										title: video.title,
-										description: video.description,
-										imageUrl: video.thumbnailUrl,
-										source: 'YouTube Shorts' as const,
-										originalUrl: `https://www.youtube.com/watch?v=${video.id}`,
-										engagement: {
-											likes: parseInt(video.likeCount || '0'),
-											comments: parseInt(video.commentCount || '0'),
-											views: parseInt(video.viewCount || '0'),
-											shares: 0
-										},
-										isShort: video.isShort,
-										duration: video.duration,
-										channelTitle: video.channelTitle,
-										publishedAt: video.publishedAt,
-										playButton: video.isShort
-									}));
-								break;
-							case 'TripAdvisor':
-								const tripAdvisorBroader = await tripAdvisorService.fetchVietnamTravelContent(15); // Reduced from 20
-								broaderResults = tripAdvisorBroader
-									.filter(location => 
-										location.title.toLowerCase().includes(broaderTerm) ||
-										(location.description && location.description.toLowerCase().includes(broaderTerm))
-									)
-									.map(location => ({
-										id: location.id,
-										title: location.title,
-										description: location.description,
-										imageUrl: location.imageUrl,
-										source: 'TripAdvisor' as const,
-										originalUrl: location.permalink,
-										engagement: {
-											likes: parseInt(location.likeCount || '0'),
-											comments: parseInt(location.commentCount || '0'),
-											views: 0,
-											shares: parseInt(location.shareCount || '0')
-										},
-										isShort: false,
-										duration: undefined,
-										channelTitle: location.authorName,
-										publishedAt: location.publishedAt,
-										playButton: false
-									}));
-								break;
-							case 'Pixabay':
-								const pixabayBroader = await pixabayService.fetchVietnamTravelImages(15); // Reduced from 20
-								broaderResults = pixabayBroader
-									.filter(image => 
-										(image.title && image.title.toLowerCase().includes(broaderTerm)) ||
-										(image.description && image.description.toLowerCase().includes(broaderTerm))
-									)
-									.map(image => ({
-										id: image.id,
-										title: image.title,
-										description: image.description,
-										imageUrl: image.imageUrl,
-										source: 'Pixabay' as const,
-										originalUrl: image.permalink,
-										engagement: {
-											likes: parseInt(image.likeCount || '0'),
-											comments: parseInt(image.commentCount || '0'),
-											views: image.views || 0,
-											shares: 0
-										},
-										isShort: false,
-										duration: undefined,
-										channelTitle: image.authorName,
-										publishedAt: image.publishedAt,
-										playButton: false
-									}));
-								break;
-
-							case 'Pexels':
-								const pexelsBroader = await pexelsService.fetchVietnamTravelImages(15); // Reduced from 20
-								broaderResults = pexelsBroader
-									.filter(image => 
-										(image.title && image.title.toLowerCase().includes(broaderTerm)) ||
-										(image.description && image.description.toLowerCase().includes(broaderTerm))
-									)
-									.map(image => ({
-										id: image.id,
-										title: image.title,
-										description: image.description,
-										imageUrl: image.imageUrl,
-										source: 'Pexels' as const,
-										originalUrl: image.permalink,
-										engagement: {
-											likes: parseInt(image.likeCount || '0'),
-											comments: parseInt(image.commentCount || '0'),
-											views: image.views || 0,
-											shares: parseInt(image.shareCount || '0')
-										},
-										isShort: false,
-										duration: undefined,
-										channelTitle: image.authorName,
-										publishedAt: image.publishedAt,
-										playButton: false
-									}));
-								break;
-						}
-						allSearchResults.push(...broaderResults);
-					} catch (error) {
-						console.error(`Error in broader search for ${source}:`, error);
-					}
-				}
-			}
-		}
-		
-		// Sort results based on user preference
-		let sortedResults = [...allSearchResults];
-		switch (filters.sortBy) {
-			case 'date':
-				sortedResults.sort((a, b) => new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime());
-				break;
-			case 'popularity':
-				sortedResults.sort((a, b) => (b.engagement.likes + b.engagement.comments) - (a.engagement.likes + a.engagement.comments));
-				break;
-			case 'relevance':
-			default:
-				// Relevance: prioritize exact matches, then partial matches
-				sortedResults.sort((a, b) => {
-					const aExact = a.title.toLowerCase() === normalizedQuery;
-					const bExact = b.title.toLowerCase() === normalizedQuery;
-					if (aExact && !bExact) return -1;
-					if (!aExact && bExact) return 1;
-					return 0;
-				});
-				break;
-		}
-		
-		return sortedResults;
-	};
-
-	// Fallback: filter existing content when search fails
-	const filterExistingContent = (query: string, filters: typeof searchFilters) => {
-		const searchTerm = query.toLowerCase().trim();
-		const filtered = content.filter(item => {
-			// Text search
-			const matchesQuery = 
-				item.title.toLowerCase().includes(searchTerm) ||
-				(item.description && item.description.toLowerCase().includes(searchTerm));
-
-			// Source filter
-			const matchesSource = filters.source.length === 0 || filters.source.includes(item.source);
-
-			// Category filter (based on title and description)
-			const matchesCategory = filters.category.length === 0 || 
-				filters.category.some(cat => 
-					item.title.toLowerCase().includes(cat.toLowerCase()) ||
-					(item.description && item.description.toLowerCase().includes(cat.toLowerCase()))
-				);
-
-			return matchesQuery && matchesSource && matchesCategory;
-		});
-
-		return filtered;
-	};
-
-	const clearSearch = () => {
-		setSearchQuery('');
-		setSearchFilters({
-			source: [],
-			category: [],
-			dateRange: 'all',
-			sortBy: 'relevance'
-		});
-		setFilteredContent([]);
-		setIsSearchActive(false);
-		setIsSearching(false);
-	};
-
-	const toggleSourceFilter = (source: string) => {
-		setSearchFilters(prev => ({
-			...prev,
-			source: prev.source.includes(source) 
-				? prev.source.filter(s => s !== source)
-				: [...prev.source, source]
-		}));
-	};
-
-	const toggleCategoryFilter = (category: string) => {
-		setSearchFilters(prev => ({
-			...prev,
-			category: prev.category.includes(category) 
-				? prev.category.filter(c => c !== category)
-				: [...prev.category, category]
-		}));
 	};
 
 	// Quota-aware content fetching strategy
@@ -1059,64 +637,40 @@ const HomeScreen: React.FC = () => {
 
 	return (
 		<View style={styles.container}>
-		
-					{/* Search Bar */}
+			{/* Search Bar */}
 			<View style={styles.searchContainer}>
-				<View style={styles.searchBar}>
-                    <TextInput
+				<TouchableOpacity style={styles.searchBar} activeOpacity={0.9} onPress={() => (navigation as any).navigate('UniversalSearch')}>
+					<TextInput
 						style={styles.searchInput}
-						placeholder="Search Vietnam travel content..."
+						placeholder="Tìm kiếm điểm đến"
 						placeholderTextColor="#9CA3AF"
-						value={searchQuery}
-                        onChangeText={setSearchQuery}
-
+						editable={false}
+						pointerEvents="none"
 					/>
-					{searchQuery.length > 0 && (
-						<TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
-							<X size={16} color="#6B7280" />
-						</TouchableOpacity>
-					)}
-					<TouchableOpacity 
-						onPress={() => {
-							if (searchQuery.trim()) {
-								setIsSearchActive(true);
-								performSearch(searchQuery, searchFilters);
-							}
-						}} 
-						style={styles.searchButton}
-						disabled={!searchQuery.trim()}
-					>
+					<View style={styles.searchButton}>
 						<Search size={18} color="#FFFFFF" />
-					</TouchableOpacity>
-				</View>
+					</View>
+				</TouchableOpacity>
 			</View>
-			
 
-			
-		{/* Main Navigation Tabs (hidden during search) */}
-		{!isSearchActive && (
+			{/* Main Navigation Tabs */}
 			<View style={styles.tabsRow}>
 				{tabs.map((tab) => (
 					<TouchableOpacity 
 						key={tab} 
-											onPress={() => {
-						setActiveTab(tab);
-						// Clear seen content when switching tabs for fresh experience
-						if (tab !== activeTab) {
-							clearSeenContent();
-							// Reset infinite scroll state for new tab
-							setHasMoreContent(true);
-						}
-						// Refetch content when tab changes
-						setTimeout(() => fetchContent(), 100);
-					}}
+						onPress={() => {
+							setActiveTab(tab);
+							if (tab !== activeTab) {
+								clearSeenContent();
+								setHasMoreContent(true);
+							}
+							setTimeout(() => fetchContent(), 100);
+						}}
 					>
 						<Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
 					</TouchableOpacity>
 				))}
-				</View>
-			)}
-			
+			</View>
 
 			{/* Loading State */}
 			{isLoading && (
@@ -1136,28 +690,8 @@ const HomeScreen: React.FC = () => {
 				</View>
 			)}
 
-
-            {/* Searching / No Results */}
-            {isSearchActive && searchQuery.trim() && (
-                isSearching ? (
-                    <View style={styles.searchingContainer}>
-                        <ActivityIndicator size="large" color="#8B5CF6" />
-                        <Text style={styles.searchLoadingText}>Searching...</Text>
-                    </View>
-                ) : filteredContent.length === 0 ? (
-                    <View style={styles.noResultsContainer}>
-                        <Text style={styles.noResultsTitle}>No results found</Text>
-                        <Text style={styles.noResultsText}>
-                            Try adjusting your search terms to find what you're looking for.
-                        </Text>
-                    </View>
-                ) : null
-            )}
-            
-
-
 			{/* Masonry Grid */}
-			{!isLoading && !isSearching && (isSearchActive ? filteredContent.length > 0 : content.length > 0) && (
+			{!isLoading && content.length > 0 && (
 				<ScrollView 
 					ref={scrollViewRef}
 					showsVerticalScrollIndicator={false} 
@@ -1165,60 +699,37 @@ const HomeScreen: React.FC = () => {
 					refreshControl={
 						<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
 					}
-                    onScroll={({ nativeEvent }) => {
+					onScroll={({ nativeEvent }) => {
 						const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
-						
-                        // Smooth bottom detection for infinite scroll
-                        const reachedBottom = checkIfReachedBottom(layoutMeasurement, contentOffset, contentSize);
-                        
-                        // Show loading animation when user is at bottom and keeps scrolling
-                        if (reachedBottom && isAtBottom && !isLoadingMore && hasMoreContent && !isSearchActive) {
-                            // Show loading animation after 2 scroll events at bottom
-                            if (bottomScrollCount >= 2) {
-                                console.log('🔄 Loading more content...');
-                                // Don't trigger load yet, just show animation
-                            }
-                        }
-                        
-                        // Only trigger infinite scroll when user has been scrolling at bottom for a while
-                        // AND with additional safeguards to prevent excessive calls
-                        if (reachedBottom && hasReachedBottom && !isLoadingMore && hasMoreContent && !isSearchActive) {
-                            const now = Date.now();
-                            const timeSinceLastLoad = now - lastLoadTime;
-                            
-                            // Prevent loading if:
-                            // 1. Less than 3 seconds since last load
-                            // 2. User is actively scrolling (not just at bottom)
-                            // 3. Content is already being processed
-                            if (timeSinceLastLoad < 3000) {
-                                console.log('⏱️ Too soon to load more content, waiting...');
-                                return;
-                            }
-                            
-                            // Add a delay to prevent rapid successive calls
-                            setTimeout(() => {
-                                if (!isLoadingMore && hasMoreContent && !isSearchActive && hasReachedBottom) {
-                                    // Double-check time since last load
-                                    const currentTime = Date.now();
-                                    if (currentTime - lastLoadTime >= 3000) {
-                                        console.log('🚀 Triggering infinite scroll from sustained bottom scroll');
-                                        loadMoreContent();
-                                    }
-                                }
-                            }, 500); // Increased delay for better throttling
-                        }
+						const reachedBottom = checkIfReachedBottom(layoutMeasurement, contentOffset, contentSize);
+						if (reachedBottom && isAtBottom && !isLoadingMore && hasMoreContent) {
+							if (bottomScrollCount >= 2) {
+								// showing animation only
+							}
+						}
+						if (reachedBottom && hasReachedBottom && !isLoadingMore && hasMoreContent) {
+							const now = Date.now();
+							const timeSinceLastLoad = now - lastLoadTime;
+							if (timeSinceLastLoad < 3000) return;
+							setTimeout(() => {
+								if (!isLoadingMore && hasMoreContent && hasReachedBottom) {
+									const currentTime = Date.now();
+									if (currentTime - lastLoadTime >= 3000) {
+										loadMoreContent();
+									}
+								}
+							}, 500);
+						}
 					}}
-                    scrollEventThrottle={32}
+					scrollEventThrottle={32}
 				>
 					<View style={styles.masonryRow}>
 						<View style={styles.column}>
-							{(isSearchActive ? filteredContent : content).filter((_, i) => i % 2 === 0).map((item, idx) => (
+							{content.filter((_, i) => i % 2 === 0).map((item, idx) => (
 								<View key={`${item.id}_${idx}`} style={styles.tile}>
 									<TouchableOpacity onPress={() => openDetailScreen(item)}>
 										<View style={[styles.card, idx % 2 === 0 ? styles.cardTall : styles.cardShort]}>
 											<Image source={{ uri: item.imageUrl }} style={styles.cardImage} resizeMode="cover" />
-											
-											{/* Play Button for Shorts */}
 											{item.playButton && (
 												<View style={styles.playButtonOverlay}>
 													<View style={styles.playButton}>
@@ -1226,14 +737,11 @@ const HomeScreen: React.FC = () => {
 													</View>
 												</View>
 											)}
-											
-											{/* Duration Badge */}
 											{item.duration && (
 												<View style={styles.durationBadge}>
 													<Text style={styles.durationText}>{item.duration}</Text>
 												</View>
 											)}
-											
 											<View style={styles.pill}>
 												<View style={styles.pillItem}>
 													<Heart size={12} color="#fff" />
@@ -1256,13 +764,11 @@ const HomeScreen: React.FC = () => {
 							))}
 						</View>
 						<View style={styles.column}>
-							{(isSearchActive ? filteredContent : content).filter((_, i) => i % 2 !== 0).map((item, idx) => (
+							{content.filter((_, i) => i % 2 !== 0).map((item, idx) => (
 								<View key={`${item.id}_${idx}`} style={styles.tile}>
 									<TouchableOpacity onPress={() => openDetailScreen(item)}>
 										<View style={[styles.card, idx % 2 === 1 ? styles.cardTall : styles.cardShort]}>
 											<Image source={{ uri: item.imageUrl }} style={styles.cardImage} resizeMode="cover" />
-											
-											{/* Play Button for Shorts */}
 											{item.playButton && (
 												<View style={styles.playButtonOverlay}>
 													<View style={styles.playButton}>
@@ -1270,14 +776,11 @@ const HomeScreen: React.FC = () => {
 													</View>
 												</View>
 											)}
-											
-											{/* Duration Badge */}
 											{item.duration && (
 												<View style={styles.durationBadge}>
 													<Text style={styles.durationText}>{item.duration}</Text>
 												</View>
 											)}
-											
 											<View style={styles.pill}>
 												<View style={styles.pillItem}>
 													<Heart size={12} color="#fff" />
@@ -1300,7 +803,7 @@ const HomeScreen: React.FC = () => {
 							))}
 						</View>
 					</View>
-					
+
 					{/* Infinite Scroll Loading Indicator */}
 					{isLoadingMore && (
 						<View style={styles.loadingMoreContainer}>
@@ -1315,16 +818,13 @@ const HomeScreen: React.FC = () => {
 					{!isLoadingMore && hasMoreContent && (
 						<View style={styles.bottomIndicator}>
 							{isAtBottom ? (
-								// Show progress toward infinite scroll trigger
 								<View style={styles.bottomProgressContainer}>
 									{bottomScrollCount >= 2 ? (
-										// Show loading animation when ready to trigger
 										<View style={styles.bottomLoadingContainer}>
 											<ActivityIndicator size="small" color="#8B5CF6" style={styles.bottomLoadingSpinner} />
 											<Text style={styles.bottomLoadingText}>Keep scrolling to load more...</Text>
 										</View>
 									) : (
-										// Show progress indicator
 										<View style={styles.bottomProgressIndicator}>
 											<View style={[styles.progressBar, { width: `${(bottomScrollCount / 2) * 100}%` }]} />
 											<Text style={styles.bottomProgressText}>
@@ -1334,21 +834,19 @@ const HomeScreen: React.FC = () => {
 									)}
 								</View>
 							) : (
-								// Show normal indicator
 								<Text style={styles.bottomIndicatorText}>
 									{hasReachedBottom ? 'Scroll to load more' : 'Scroll to bottom to load more'}
 								</Text>
 							)}
 						</View>
 					)}
-					
+
 					{/* No more content indicator */}
 					{!hasMoreContent && (
 						<View style={styles.noMoreContentContainer}>
 							<Text style={styles.noMoreContentText}>No more content available</Text>
 						</View>
 					)}
-					
 				</ScrollView>
 			)}
 

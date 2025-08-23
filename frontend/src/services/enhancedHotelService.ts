@@ -80,12 +80,21 @@ export class EnhancedHotelService {
   // Get hotel details by place ID (for ExploreScreen)
   async getHotelDetailsByPlaceId(placeId: string, coordinates: any): Promise<EnhancedHotel> {
     try {
+      console.log(`🔍 EnhancedHotelService: Getting details for place_id: ${placeId}`);
+      
       // 1. Get Google Places hotel details
       const googleData = await googlePlacesService.getHotelDetails(placeId);
       
       if (!googleData) {
+        console.log(`❌ EnhancedHotelService: No Google Places data returned for ${placeId}`);
         throw new Error('Failed to get Google Places data');
       }
+      
+      console.log(`✅ EnhancedHotelService: Google Places data received:`, {
+        id: googleData.id,
+        name: googleData.name,
+        photos: googleData.photos?.length || 0
+      });
       
       // 2. Try to get Amadeus data
       let amadeusData = null;
@@ -141,6 +150,7 @@ export class EnhancedHotelService {
       // 4. Merge all data
       return this.mergeHotelData(googleData, amadeusData, tripAdvisorData);
     } catch (error) {
+      console.log(`❌ EnhancedHotelService: Error getting hotel details:`, error);
       throw new Error('Failed to get hotel details');
     }
   }

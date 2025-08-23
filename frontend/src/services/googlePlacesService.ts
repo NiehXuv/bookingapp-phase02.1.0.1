@@ -97,7 +97,7 @@ class GooglePlacesService {
     }
   }
 
-  // Search hotels using Google Places API
+// Enhanced hotel search with multiple strategies
   async searchHotels(query: string, location?: string, radius?: number): Promise<GoogleHotel[]> {
     try {
       if (!this.apiKey || this.apiKey === 'YOUR_GOOGLE_PLACES_API_KEY') {
@@ -105,30 +105,160 @@ class GooglePlacesService {
         return this.getMockHotels(query);
       }
 
+      console.log(`🏨 Starting comprehensive hotel search for: ${query}`);
+      let allHotels: GoogleHotel[] = [];
+
+      // Strategy 1: Direct city search (most specific)
+      const directResults = await this.searchHotelsDirect(query);
+      console.log(`🏨 Strategy 1 (Direct): Found ${directResults.length} hotels`);
+      allHotels.push(...directResults);
+
+      // Strategy 2: Nearby search if we have coordinates
+      const coordinates = await this.getCityCoordinates(query);
+      if (coordinates) {
+        const nearbyResults = await this.searchHotelsNearby(coordinates, radius || 20000);
+        console.log(`🏨 Strategy 2 (Nearby): Found ${nearbyResults.length} hotels`);
+        allHotels.push(...nearbyResults);
+      }
+
+      // Strategy 3: Alternative search terms
+      const alternativeResults = await this.searchHotelsAlternative(query);
+      console.log(`🏨 Strategy 3 (Alternative): Found ${alternativeResults.length} hotels`);
+      allHotels.push(...alternativeResults);
+
+      // Remove duplicates
+      const uniqueHotels = this.removeDuplicateHotels(allHotels);
+      console.log(`🏨 Total unique hotels found: ${uniqueHotels.length}`);
+
+      return uniqueHotels.length > 0 ? uniqueHotels : this.getMockHotels(query);
+    } catch (error) {
+      console.error('Error searching hotels:', error);
+      return this.getMockHotels(query);
+    }
+  }
+
+  // Strategy 1: Direct text search
+  private async searchHotelsDirect(query: string): Promise<GoogleHotel[]> {
+    try {
       const params = new URLSearchParams({
-        query: `${query} hotel ${location || 'Hanoi, Vietnam'}`,
+        query: `hotel in ${query} Vietnam`,
         key: this.apiKey,
         type: 'lodging',
         language: 'vi',
         region: 'vn'
       });
 
-      if (radius) {
-        params.append('radius', radius.toString());
-      }
-
       const response = await fetch(`${this.baseUrl}/textsearch/json?${params}`);
-      
-      if (!response.ok) {
-        throw new Error(`Google Places API error: ${response.status}`);
-      }
+      if (!response.ok) return [];
 
       const data = await response.json();
       return this.transformHotelsResponse(data);
     } catch (error) {
-      console.error('Error searching hotels:', error);
-      return this.getMockHotels(query);
+      console.error('Direct hotel search error:', error);
+      return [];
     }
+  }
+
+  // Strategy 2: Nearby search using coordinates
+  private async searchHotelsNearby(coordinates: {lat: number, lng: number}, radius: number): Promise<GoogleHotel[]> {
+    try {
+      const params = new URLSearchParams({
+        location: `${coordinates.lat},${coordinates.lng}`,
+        radius: radius.toString(),
+        type: 'lodging',
+        key: this.apiKey,
+        language: 'vi'
+      });
+
+      const response = await fetch(`${this.baseUrl}/nearbysearch/json?${params}`);
+      if (!response.ok) return [];
+
+      const data = await response.json();
+      return this.transformHotelsResponse(data);
+    } catch (error) {
+      console.error('Nearby hotel search error:', error);
+      return [];
+    }
+  }
+
+  // Strategy 3: Alternative search terms
+  private async searchHotelsAlternative(query: string): Promise<GoogleHotel[]> {
+    try {
+      const alternativeTerms = [
+        `accommodation ${query}`,
+        `resort ${query}`,
+        `lodge ${query} Vietnam`,
+        `${query} Bay hotel` // For places like Ha Long Bay
+      ];
+
+      let results: GoogleHotel[] = [];
+      
+      for (const term of alternativeTerms) {
+        const params = new URLSearchParams({
+          query: term,
+          key: this.apiKey,
+          type: 'lodging',
+          language: 'vi',
+          region: 'vn'
+        });
+
+        try {
+          const response = await fetch(`${this.baseUrl}/textsearch/json?${params}`);
+          if (response.ok) {
+            const data = await response.json();
+            const termResults = this.transformHotelsResponse(data);
+            results.push(...termResults);
+          }
+        } catch (termError) {
+          console.log(`Alternative search failed for term: ${term}`);
+        }
+      }
+
+      return results;
+    } catch (error) {
+      console.error('Alternative hotel search error:', error);
+      return [];
+    }
+  }
+
+  // Get coordinates for a city
+  private async getCityCoordinates(city: string): Promise<{lat: number, lng: number} | null> {
+    try {
+      const params = new URLSearchParams({
+        query: `${city} Vietnam`,
+        key: this.apiKey,
+        language: 'vi'
+      });
+
+      const response = await fetch(`${this.baseUrl}/textsearch/json?${params}`);
+      if (!response.ok) return null;
+
+      const data = await response.json();
+      if (data.results && data.results.length > 0) {
+        const location = data.results[0].geometry?.location;
+        if (location) {
+          console.log(`📍 Found coordinates for ${city}: ${location.lat}, ${location.lng}`);
+          return { lat: location.lat, lng: location.lng };
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting city coordinates:', error);
+      return null;
+    }
+  }
+
+  // Remove duplicate hotels
+  private removeDuplicateHotels(hotels: GoogleHotel[]): GoogleHotel[] {
+    const seen = new Set();
+    return hotels.filter(hotel => {
+      const key = `${hotel.name.toLowerCase()}_${hotel.coordinates.lat.toFixed(4)}_${hotel.coordinates.lng.toFixed(4)}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
   }
 
   // Get hotel details with full information
@@ -461,47 +591,77 @@ class GooglePlacesService {
 
   // Mock hotel data for testing
   private getMockHotels(query: string): GoogleHotel[] {
-    return [
+    // Generate city-specific mock hotels
+    const cityName = query || 'Vietnam';
+    const cityHotels = [
       {
         id: '1',
-        name: 'Hanoi Emerald Waters Hotel & Spa',
+        name: `${cityName} Emerald Waters Hotel & Spa`,
         price: 1200000,
         rating: 4.5,
-        location: 'D8 P. Giảng Võ, Giảng Võ, Ba Đình, Hà Nội 10000',
+        location: `${cityName}, Vietnam`,
         coordinates: { lat: 21.0285, lng: 105.8542 },
-        amenities: ['WiFi', 'Parking', 'Room Service'],
-        address: 'D8 P. Giảng Võ, Giảng Võ, Ba Đình, Hà Nội 10000',
+        amenities: ['WiFi', 'Parking', 'Room Service', 'Pool', 'Restaurant'],
+        address: `${cityName}, Vietnam`,
         photos: ['https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400'],
         priceLevel: 3,
         userRatingsTotal: 1250
       },
       {
         id: '2',
-        name: 'Hanoi Legend Hotel',
+        name: `${cityName} Legend Hotel`,
         price: 800000,
         rating: 4.2,
-        location: '96 P. Sơn Tây, Kim Mã, Ba Đình, Hà Nội 100000',
+        location: `${cityName}, Vietnam`,
         coordinates: { lat: 21.0300, lng: 105.8500 },
-        amenities: ['WiFi', 'Parking', 'Room Service'],
-        address: '96 P. Sơn Tây, Kim Mã, Ba Đình, Hà Nội 100000',
+        amenities: ['WiFi', 'Parking', 'Room Service', 'Gym', 'Bar'],
+        address: `${cityName}, Vietnam`,
         photos: ['https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=400'],
         priceLevel: 2,
         userRatingsTotal: 890
       },
       {
         id: '3',
-        name: 'Fraser Suites Hanoi',
+        name: `${cityName} Grand Resort`,
         price: 2500000,
         rating: 4.8,
-        location: '25 P. Hàng Cà, Phố cổ, Hà Nội 10000',
+        location: `${cityName}, Vietnam`,
         coordinates: { lat: 21.0275, lng: 105.8525 },
-        amenities: ['WiFi', 'Parking', 'Room Service'],
-        address: '25 P. Hàng Cà, Phố cổ, Hà Nội 10000',
+        amenities: ['WiFi', 'Parking', 'Room Service', 'Spa', 'Beach Access'],
+        address: `${cityName}, Vietnam`,
         photos: ['https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=400'],
         priceLevel: 4,
         userRatingsTotal: 2100
+      },
+      {
+        id: '4',
+        name: `${cityName} Boutique Hotel`,
+        price: 600000,
+        rating: 4.0,
+        location: `${cityName}, Vietnam`,
+        coordinates: { lat: 21.0265, lng: 105.8515 },
+        amenities: ['WiFi', 'Parking', 'Restaurant'],
+        address: `${cityName}, Vietnam`,
+        photos: ['https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=400'],
+        priceLevel: 2,
+        userRatingsTotal: 450
+      },
+      {
+        id: '5',
+        name: `${cityName} Business Center Hotel`,
+        price: 1800000,
+        rating: 4.3,
+        location: `${cityName}, Vietnam`,
+        coordinates: { lat: 21.0295, lng: 105.8535 },
+        amenities: ['WiFi', 'Parking', 'Business Center', 'Conference Rooms'],
+        address: `${cityName}, Vietnam`,
+        photos: ['https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400'],
+        priceLevel: 3,
+        userRatingsTotal: 780
       }
     ];
+
+    return cityHotels;
   }
 
   private getRandomHotelImage(): string {
