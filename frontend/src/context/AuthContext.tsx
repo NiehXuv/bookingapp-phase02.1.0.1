@@ -20,6 +20,8 @@ interface AuthContextProps {
   signup: (username: string, email: string, password: string, country: string, phoneNumber: string) => Promise<void>;
   logout: () => Promise<void>;
   testBackendConnection: () => Promise<boolean>;
+  refreshToken: () => Promise<boolean>;
+  isTokenExpired: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -29,14 +31,77 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
+  // Check if token is expired
+  const isTokenExpired = (): boolean => {
+    if (!token) return true;
+    
+    try {
+      // JWT tokens have 3 parts separated by dots
+      const parts = token.split('.');
+      if (parts.length !== 3) return true;
+      
+      // Decode the payload (second part)
+      const payload = JSON.parse(atob(parts[1]));
+      const currentTime = Math.floor(Date.now() / 1000);
+      
+      // Check if token is expired (exp field is in seconds)
+      return payload.exp < currentTime;
+    } catch (error) {
+      console.error('Error checking token expiration:', error);
+      return true;
+    }
+  };
+
+  // Refresh token by re-authenticating
+  const refreshToken = async (): Promise<boolean> => {
+    try {
+      if (!user?.email) {
+        console.log('No user email available for token refresh');
+        return false;
+      }
+
+      console.log('Attempting to refresh token...');
+      
+      // For now, we'll need the user to re-enter their password
+      // In a production app, you'd implement a refresh token mechanism
+      console.log('Token refresh requires re-authentication');
+      return false;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      return false;
+    }
+  };
+
   useEffect(() => {
     const loadStoredAuth = async () => {
       try {
         const storedToken = await AsyncStorage.getItem('token');
         const storedUser = await AsyncStorage.getItem('user');
+        
         if (storedToken && storedUser) {
-          setToken(storedToken);
-          setUser(JSON.parse(storedUser));
+          // Check if token is expired
+          const tokenParts = storedToken.split('.');
+          if (tokenParts.length === 3) {
+            try {
+              const payload = JSON.parse(atob(tokenParts[1]));
+              const currentTime = Math.floor(Date.now() / 1000);
+              
+              if (payload.exp > currentTime) {
+                // Token is still valid
+                setToken(storedToken);
+                setUser(JSON.parse(storedUser));
+              } else {
+                // Token is expired, clear it
+                console.log('Stored token is expired, clearing...');
+                await AsyncStorage.removeItem('token');
+                await AsyncStorage.removeItem('user');
+              }
+            } catch (error) {
+              console.error('Error parsing stored token:', error);
+              await AsyncStorage.removeItem('token');
+              await AsyncStorage.removeItem('user');
+            }
+          }
         }
       } catch (error) {
         console.error('Error loading stored auth:', error);
@@ -133,7 +198,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       login, 
       signup, 
       logout,
-      testBackendConnection
+      testBackendConnection,
+      refreshToken,
+      isTokenExpired
     }}>
       {children}
     </AuthContext.Provider>

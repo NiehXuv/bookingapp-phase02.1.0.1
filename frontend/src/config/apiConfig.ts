@@ -1,5 +1,10 @@
 // API Configuration
 export const API_CONFIG = {
+  BACKEND: {
+    // Using your computer's actual IP address for Expo compatibility
+    // Your IP: 192.168.0.100
+    BASE_URL: process.env.BACKEND_URL || 'http://192.168.0.100:5000',
+  },
   YOUTUBE: {
     API_KEY: 'AIzaSyCtbREGKCFH0eDSA065TYqT7p4B0TLcw6Y', 
     BASE_URL: 'https://www.googleapis.com/youtube/v3',
@@ -104,6 +109,11 @@ export const getAgodaApiKey = (): string => {
     console.warn('⚠️ Agoda API key not configured. Please set AGODA_API_KEY in your .env file');
   }
   return apiKey;
+};
+
+// Get backend base URL
+export const getBackendBaseUrl = (): string => {
+  return API_CONFIG.BACKEND.BASE_URL;
 };
 
 

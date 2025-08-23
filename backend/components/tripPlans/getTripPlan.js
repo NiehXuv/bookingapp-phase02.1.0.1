@@ -9,7 +9,7 @@ async function getTripPlan(req, res) {
       return res.status(400).json({ error: "Plan ID is required" });
     }
 
-    const tripPlanRef = `Users/${uid}`/`tripPlans/${planId}`;
+    const tripPlanRef = `Users/${uid}/tripPlans/${planId}`;
     const snapshot = await get(tripPlanRef);
 
     if (!snapshot.exists()) {

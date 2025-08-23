@@ -10,10 +10,25 @@ async function createTripPlan(req, res) {
       companion,
       preferences,
       budget,
-      status = "draft"
+      status = "draft",
+      aiGeneratedContent,
+      itinerary
     } = req.body;
 
-    if (!planName || !destinations || !tripDays || !companion || !preferences || !budget) {
+    // Debug logging
+    console.log('createTripPlan - Received data:', {
+      planName,
+      destinations,
+      tripDays,
+      companion,
+      preferences,
+      budget,
+      status,
+      aiGeneratedContent,
+      itinerary
+    });
+
+    if (!planName || !destinations || !tripDays || !companion || !budget) {
       return res.status(400).json({ error: "All required fields must be provided" });
     }
 
@@ -34,21 +49,25 @@ async function createTripPlan(req, res) {
       destinations,
       tripDays: parseInt(tripDays),
       companion,
-      preferences: {
-        vibePreferences: preferences.vibePreferences || [],
-        activityPreferences: preferences.activityPreferences || [],
-        eatingPreferences: preferences.eatingPreferences || [],
-        budgetRange: preferences.budgetRange || "",
-        travelStyle: preferences.travelStyle || ""
+      preferences: Array.isArray(preferences) ? preferences : {
+        vibePreferences: preferences?.vibePreferences || [],
+        activityPreferences: preferences?.activityPreferences || [],
+        eatingPreferences: preferences?.eatingPreferences || [],
+        budgetRange: preferences?.budgetRange || "",
+        travelStyle: preferences?.travelStyle || ""
       },
       budget: parseFloat(budget),
       status,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      itinerary: {
-        days: []
-      }
+      // Save the AI-generated content
+      aiGeneratedContent: aiGeneratedContent || {},
+      // Save the itinerary (either from AI or provided)
+      itinerary: itinerary || { days: [] }
     };
+
+    // Debug logging
+    console.log('createTripPlan - Saving data:', tripPlanData);
 
     // Create new trip plan with auto-generated ID
     const tripPlansPath = `Users/${uid}/tripPlans`;

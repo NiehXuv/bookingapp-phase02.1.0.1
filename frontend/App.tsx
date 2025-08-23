@@ -27,7 +27,7 @@ import SearchContentResultScreen from './src/screens/SearchContentResultScreen';
 import TransportDetailScreen from './src/screens/TransportDetailScreen';
 import PlanningFlowNavigator from './src/screens/planning/PlanningFlowNavigator';
 import PlanningSummaryScreen from './src/screens/planning/PlanningSummaryScreen';
-import PlanningResultScreen from './src/screens/planning/PlanningResultScreen';
+import PlanningDetailScreen from './src/screens/planning/PlanningDetailScreen';
 import PlanManualScreen from './src/screens/planning/PlanManualScreen';
 import ExploreScreen from './src/screens/ExploreScreen';
 
@@ -79,7 +79,7 @@ function RootNavigator() {
             <Stack.Screen name="TransportDetailScreen" component={TransportDetailScreen as any} />
             <Stack.Screen name="PlanningFlow" component={PlanningFlowNavigator} />
             <Stack.Screen name="PlanningSummary" component={PlanningSummaryScreen} />
-            <Stack.Screen name="PlanningResult" component={PlanningResultScreen} />
+            <Stack.Screen name="PlanningDetail" component={PlanningDetailScreen} />
             <Stack.Screen name="PlanManual" component={PlanManualScreen} />
             <Stack.Screen name="Inbox" component={InboxScreen} />
           </>

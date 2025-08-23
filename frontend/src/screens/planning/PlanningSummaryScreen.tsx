@@ -1,22 +1,18 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useAuth } from '../../context/AuthContext';
+import geminiService, { PlanningData } from '../../services/geminiService';
 
 const { width } = Dimensions.get('window');
-
-interface PlanningData {
-  destinations: string[];
-  tripDays: number;
-  companion: string;
-  preferences: any[];
-  budget: number;
-}
 
 const PlanningSummaryScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  const { token, isTokenExpired, logout } = useAuth();
+  const [isGenerating, setIsGenerating] = useState(false);
   
   // Get planning data from navigation params
   const planningData = (route.params as any)?.planningData as PlanningData || {
@@ -27,14 +23,117 @@ const PlanningSummaryScreen: React.FC = () => {
     budget: 200,
   };
 
+  const getBackendBaseUrl = (): string => {
+    return 'http://192.168.0.100:5000';
+  };
+
   const handleEditPlan = () => {
     // Navigate back to PlanningFlow to edit the plan
     (navigation as any).navigate('PlanningFlow', { planningData });
   };
 
-  const handleGeneratePlan = () => {
-    // Navigate to the new PlanningResultScreen
-    (navigation as any).navigate('PlanningResult', { planningData });
+  const handleGeneratePlan = async () => {
+    if (!token) {
+      Alert.alert('Authentication Error', 'Please log in to generate a travel plan.');
+      return;
+    }
+
+    // Check if token is expired
+    if (isTokenExpired()) {
+      Alert.alert(
+        'Session Expired', 
+        'Your login session has expired. Please log in again.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Login', 
+            onPress: async () => {
+              await logout();
+              (navigation as any).navigate('Login');
+            }
+          }
+        ]
+      );
+      return;
+    }
+
+    setIsGenerating(true);
+    
+    try {
+      // Call Gemini API to generate travel plan
+      const response = await geminiService.generateTripPlan(planningData, token);
+      
+      // Save the generated plan to backend
+      const saveResponse = await fetch(`${getBackendBaseUrl()}/api/trip-plans`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          planName: response.generatedContent.planName || `Trip to ${planningData.destinations.join(', ')}`,
+          destinations: planningData.destinations,
+          tripDays: planningData.tripDays,
+          companion: planningData.companion,
+          preferences: planningData.preferences,
+          budget: planningData.budget,
+          status: "active",
+          // Include the AI-generated content
+          aiGeneratedContent: {
+            summary: response.generatedContent.summary,
+            itinerary: response.generatedContent.itinerary,
+            totalEstimatedCost: response.generatedContent.totalEstimatedCost,
+            travelTips: response.generatedContent.travelTips,
+            packingList: response.generatedContent.packingList,
+            emergencyContacts: response.generatedContent.emergencyContacts
+          },
+          itinerary: response.generatedContent.itinerary || { days: [] }
+        }),
+      });
+
+      if (!saveResponse.ok) {
+        const errorData = await saveResponse.json();
+        throw new Error(errorData.error || 'Failed to save travel plan');
+      }
+
+      const saveData = await saveResponse.json();
+      
+      // Navigate to PlanningDetailScreen with the saved plan
+      (navigation as any).navigate('PlanningDetail', { 
+        planId: saveData.planId,
+        planningData,
+        generatedPlan: response.generatedContent,
+      });
+      
+    } catch (error: any) {
+      console.error('Error generating/saving plan:', error);
+      
+      // Handle token expiration error specifically
+      if (error.message === 'Token expired.' || error.message.includes('Token expired')) {
+        Alert.alert(
+          'Session Expired', 
+          'Your login session has expired. Please log in again.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Login', 
+              onPress: async () => {
+                await logout();
+                (navigation as any).navigate('Login');
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert(
+          'Generation Failed', 
+          error.message || 'Failed to generate travel plan. Please try again.',
+          [{ text: 'OK' }]
+        );
+      }
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const formatPreferences = (preferences: any[]) => {
@@ -134,6 +233,7 @@ const PlanningSummaryScreen: React.FC = () => {
             style={styles.cancelButton}
             onPress={() => (navigation as any).navigate('Main', { screen: 'Plan' })}
             activeOpacity={0.8}
+            disabled={isGenerating}
           >
             <Feather name="x" size={20} color="#8E8E93" />
             <Text style={styles.cancelButtonText}>Cancel</Text>
@@ -143,6 +243,7 @@ const PlanningSummaryScreen: React.FC = () => {
             style={styles.editButton}
             onPress={handleEditPlan}
             activeOpacity={0.8}
+            disabled={isGenerating}
           >
             <Feather name="edit-3" size={20} color="#8E8E93" />
             <Text style={styles.editButtonText}>Edit Plan</Text>
@@ -152,6 +253,7 @@ const PlanningSummaryScreen: React.FC = () => {
             style={styles.generateButton}
             onPress={handleGeneratePlan}
             activeOpacity={0.8}
+            disabled={isGenerating}
           >
             <LinearGradient
               colors={['#4CBC71', '#45A364']}
@@ -159,8 +261,17 @@ const PlanningSummaryScreen: React.FC = () => {
               end={{ x: 1, y: 0 }}
               style={styles.generateButtonGradient}
             >
-              <MaterialCommunityIcons name="magic-staff" size={24} color="#fff" />
-              <Text style={styles.generateButtonText}>Generate Plan</Text>
+              {isGenerating ? (
+                <>
+                  <ActivityIndicator size="small" color="#fff" />
+                  <Text style={styles.generateButtonText}>Generating...</Text>
+                </>
+              ) : (
+                <>
+                  <MaterialCommunityIcons name="magic-staff" size={24} color="#fff" />
+                  <Text style={styles.generateButtonText}>Generate Plan</Text>
+                </>
+              )}
             </LinearGradient>
           </TouchableOpacity>
         </View>

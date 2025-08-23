@@ -11,7 +11,7 @@ async function updateTripPlan(req, res) {
     }
 
     // Get existing trip plan
-    const tripPlanRef = `Users/${uid}`/`tripPlans/${planId}`;
+    const tripPlanRef = `Users/${uid}/tripPlans/${planId}`;
     const snapshot = await get(tripPlanRef);
 
     if (!snapshot.exists()) {

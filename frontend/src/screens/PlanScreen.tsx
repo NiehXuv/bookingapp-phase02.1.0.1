@@ -1,52 +1,99 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 
 interface PlanCard {
-  id: string;
-  title: string;
-  dateRange: string;
-  destinations: number;
-  timeAgo: string;
+  planId: string;
+  planName: string;
+  destinations: string[];
+  tripDays: number;
+  companion: string;
+  status: string;
+  createdAt: number;
+  aiGeneratedContent?: {
+    summary?: string;
+    itinerary?: any;
+    totalEstimatedCost?: string;
+    travelTips?: string[];
+    packingList?: string[];
+  };
 }
-
-const mockPlans: PlanCard[] = [
-  {
-    id: '1',
-    title: 'Hoi An trip with family',
-    dateRange: '24/06/2025 - 03/07/2025',
-    destinations: 5,
-    timeAgo: '8hrs ago'
-  },
-  {
-    id: '2',
-    title: 'Besties and Cao Bang',
-    dateRange: '15/07/2025 - 22/07/2025',
-    destinations: 4,
-    timeAgo: '1 day ago'
-  },
-  {
-    id: '3',
-    title: 'Lovers\' date',
-    dateRange: '08/08/2025 - 12/08/2025',
-    destinations: 3,
-    timeAgo: '2 days ago'
-  },
-  {
-    id: '4',
-    title: 'Solo adventure to Sapa',
-    dateRange: '20/08/2025 - 25/08/2025',
-    destinations: 2,
-    timeAgo: '3 days ago'
-  }
-];
 
 const PlanScreen: React.FC = () => {
   const navigation = useNavigation();
+  const { token, isTokenExpired, logout } = useAuth();
+  const [plans, setPlans] = useState<PlanCard[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const getBackendBaseUrl = (): string => {
+    return 'http://192.168.0.100:5000';
+  };
+
+  const fetchPlans = async () => {
+    if (!token) return;
+    
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${getBackendBaseUrl()}/api/trip-plans`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch plans');
+      }
+
+      const data = await response.json();
+      setPlans(data.tripPlans || []);
+    } catch (error) {
+      console.error('Error fetching plans:', error);
+      Alert.alert('Error', 'Failed to load your travel plans');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchPlans();
+    }, [token])
+  );
+
+  const formatTimeAgo = (timestamp: number): string => {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) {
+      return `${days} day${days > 1 ? 's' : ''} ago`;
+    } else if (hours > 0) {
+      return `${hours}hr${hours > 1 ? 's' : ''} ago`;
+    } else {
+      return 'Just now';
+    }
+  };
+
+  const handlePlanPress = (plan: PlanCard) => {
+    // Navigate to PlanningDetailScreen with the plan data
+    (navigation as any).navigate('PlanningDetail', {
+      planId: plan.planId,
+      planningData: {
+        destinations: plan.destinations,
+        tripDays: plan.tripDays,
+        companion: plan.companion,
+        preferences: [],
+        budget: 0,
+      },
+      generatedPlan: plan.aiGeneratedContent || {},
+    });
+  };
 
   const handlePlanWithTravie = () => {
     // Navigate to PlanningFlow from the root stack
@@ -67,6 +114,15 @@ const PlanScreen: React.FC = () => {
     // TODO: Implement delete logic
     console.log('Delete plan:', planId);
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FF6B9D" />
+        <Text style={styles.loadingText}>Loading your travel plans...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -129,26 +185,30 @@ const PlanScreen: React.FC = () => {
         <View style={styles.plansSection}>
           <Text style={styles.plansSectionTitle}>Your Created Plans</Text>
           
-          {mockPlans.map((plan) => (
-            <View key={plan.id} style={styles.planCard}>
+          {plans.map((plan) => (
+            <TouchableOpacity 
+              key={plan.planId} 
+              style={styles.planCard}
+              onPress={() => handlePlanPress(plan)}
+            >
               <View style={styles.planCardLeft}>
                 <View style={styles.locationIconContainer}>
                   <Ionicons name="location" size={16} color="#fff" />
                 </View>
                 <View style={styles.planInfo}>
-                  <Text style={styles.planTitle}>{plan.title}</Text>
+                  <Text style={styles.planTitle}>{plan.planName}</Text>
                   <View style={styles.planDetails}>
-                    <Text style={styles.planDetailText}>• {plan.dateRange}</Text>
-                    <Text style={styles.planDetailText}>• {plan.destinations} Destinations</Text>
+                    <Text style={styles.planDetailText}>• {plan.tripDays} days</Text>
+                    <Text style={styles.planDetailText}>• {plan.companion}</Text>
                   </View>
-                  <Text style={styles.timeAgo}>{plan.timeAgo}</Text>
+                  <Text style={styles.timeAgo}>{formatTimeAgo(plan.createdAt)}</Text>
                 </View>
               </View>
               
               <View style={styles.planCardRight}>
                 <TouchableOpacity 
                   style={styles.actionButton}
-                  onPress={() => handleEditPlan(plan.id)}
+                  onPress={() => handleEditPlan(plan.planId)}
                   activeOpacity={0.7}
                 >
                   <Feather name="edit-3" size={18} color="#B3B4BB" />
@@ -156,13 +216,13 @@ const PlanScreen: React.FC = () => {
                 
                 <TouchableOpacity 
                   style={styles.actionButton}
-                  onPress={() => handleDeletePlan(plan.id)}
+                  onPress={() => handleDeletePlan(plan.planId)}
                   activeOpacity={0.7}
                 >
                   <Feather name="trash-2" size={18} color="#B3B4BB" />
                 </TouchableOpacity>
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
       </ScrollView>
@@ -358,6 +418,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2F2F7',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FCFCFC',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#8E8E93',
   },
 });
 

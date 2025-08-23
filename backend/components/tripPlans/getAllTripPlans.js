@@ -5,7 +5,7 @@ async function getAllTripPlans(req, res) {
     const { uid } = req.user; // From JWT token
     const { status } = req.query; // Optional filter by status
 
-    const tripPlansRef = `Users/${uid}`/tripPlans;
+    const tripPlansRef = `Users/${uid}/tripPlans`;
     const snapshot = await get(tripPlansRef);
 
     if (!snapshot.exists()) {

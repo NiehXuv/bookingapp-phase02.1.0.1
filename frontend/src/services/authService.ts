@@ -4,7 +4,7 @@ import { Alert, Platform } from 'react-native';
 const getApiBaseUrl = () => {
   if (__DEV__) {
     // Development environment - using your computer's IP
-    return 'http://192.168.1.62:5000/api';
+    return 'http://192.168.0.100:5000/api';
   } else {
     // Production environment - replace with your actual production URL
     return 'https://your-production-domain.com/api';

@@ -9,7 +9,7 @@ async function deleteTripPlan(req, res) {
       return res.status(400).json({ error: "Plan ID is required" });
     }
 
-    const tripPlanRef = `Users/${uid}`/`tripPlans/${planId}`;
+    const tripPlanRef = `Users/${uid}/tripPlans/${planId}`;
     
     // Delete the trip plan
     await remove(tripPlanRef);
