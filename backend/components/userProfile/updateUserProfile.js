@@ -1,4 +1,4 @@
-const { database, get, set } = require("../../config/firebaseconfig.js");
+const { database, get, set, ref } = require("../../config/firebaseconfig.js");
 const bcrypt = require("bcrypt");
 
 // Simple validation functions
@@ -24,6 +24,17 @@ const isValidPhoneNumber = (phoneNumber, country) => {
 
 async function updateUserProfile(req, res) {
   try {
+    console.log('Update profile request received:', {
+      body: req.body,
+      user: req.user,
+      headers: req.headers
+    });
+    
+    if (!req.user || !req.user.uid) {
+      console.error('No user data in request:', req.user);
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    
     const { uid } = req.user; // From JWT token
     const updateData = req.body;
 
@@ -32,8 +43,8 @@ async function updateUserProfile(req, res) {
     }
 
     // Get existing profile
-    const userProfileRef = `Users/${uid}`/profile;
-    const snapshot = await get(userProfileRef);
+    const userProfileRef = `Users/${uid}/profile`;
+    const snapshot = await get(ref(database, userProfileRef));
 
     if (!snapshot.exists()) {
       return res.status(404).json({ error: "User profile not found" });
@@ -77,11 +88,13 @@ async function updateUserProfile(req, res) {
     }
 
     // Update the profile
-    await set(userProfileRef, updatedProfile);
+    await set(ref(database, userProfileRef), updatedProfile);
 
     // Remove sensitive information before sending response
     const { password, ...safeProfile } = updatedProfile;
 
+    console.log('Profile updated successfully for user:', uid);
+    
     res.status(200).json({
       message: "User profile updated successfully",
       profile: safeProfile

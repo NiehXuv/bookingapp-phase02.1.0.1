@@ -22,7 +22,8 @@ module.exports = {
   auth: adminAuth,
   database: adminDatabase,
   // Export Firebase functions for components (using Admin SDK directly)
-  // Note: Components should use adminDatabase.ref() directly instead of this ref function
+  // Note: Chat components expect ref(database, path) pattern
+  ref: (database, path) => database.ref(path),
   set: (path, data) => adminDatabase.ref(path).set(data),
   push: (path, data) => adminDatabase.ref(path).push(data),
   get: (path) => adminDatabase.ref(path).get(),

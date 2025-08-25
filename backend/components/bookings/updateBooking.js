@@ -1,4 +1,4 @@
-const { database, get, set } = require("../../config/firebaseconfig.js");
+const { database, get, set, ref } = require("../../config/firebaseconfig.js");
 
 async function updateBooking(req, res) {
   try {
@@ -11,8 +11,8 @@ async function updateBooking(req, res) {
     }
 
     // Get existing booking
-    const bookingRef = `Users/${uid}`/`bookings/${bookingId}`;
-    const snapshot = await get(bookingRef);
+    const bookingRef = `Users/${uid}/bookings/${bookingId}`;
+    const snapshot = await get(ref(database, bookingRef));
 
     if (!snapshot.exists()) {
       return res.status(404).json({ error: "Booking not found" });
@@ -45,12 +45,12 @@ async function updateBooking(req, res) {
 
     // Ensure required fields are preserved
     if (!updatedBooking.title || !updatedBooking.description || !updatedBooking.date || 
-        !updatedBooking.time || !updatedBooking.type || !updatedBooking.details) {
+        !updatedBooking.time || !updatedBooking.type || !updatedBooking.guestsNumber || !updatedBooking.details) {
       return res.status(400).json({ error: "All required fields must be preserved" });
     }
 
     // Update the booking
-    await set(bookingRef, updatedBooking);
+    await set(ref(database, bookingRef), updatedBooking);
 
     res.status(200).json({
       message: "Booking updated successfully",

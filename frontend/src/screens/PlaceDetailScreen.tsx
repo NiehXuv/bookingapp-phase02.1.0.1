@@ -50,11 +50,16 @@ const PlaceDetailScreen: React.FC<PlaceDetailScreenProps> = ({ route, navigation
       setIsLoading(true);
       const placeService = new EnhancedPlaceService();
       
+      // Debug: Log what we received
+      console.log('🎯 PlaceDetailScreen: Received route params:', { placeId, placeData, coordinates });
+      
       let details: EnhancedPlace;
       
       // Check if we have placeData (tour data) or need to fetch from API
       if (placeData) {
-        console.log('🎯 PlaceDetailScreen: Using provided tour data');
+        console.log('🎯 PlaceDetailScreen: Using provided place data with photos:', placeData.photos?.length || 0);
+        console.log('🎯 PlaceDetailScreen: Using provided place data with reviews:', placeData.reviews?.length || 0);
+        console.log('🎯 PlaceDetailScreen: Using provided place data with description:', placeData.editorialSummary || placeData.description);
         try {
           details = await placeService.getTourDetails(placeData, coordinates);
         } catch (error) {
@@ -70,6 +75,13 @@ const PlaceDetailScreen: React.FC<PlaceDetailScreenProps> = ({ route, navigation
           details = await placeService.getMockPlaceDetails(placeId);
         }
       }
+      
+      console.log('🎯 PlaceDetailScreen: Final enhanced place data:', {
+        photosCount: details.photos?.length || 0,
+        reviewsCount: details.reviews?.length || 0,
+        description: details.description,
+        openingHours: details.openingHours
+      });
       
       setEnhancedPlace(details);
     } catch (error) {
@@ -102,10 +114,11 @@ const PlaceDetailScreen: React.FC<PlaceDetailScreenProps> = ({ route, navigation
     if (!enhancedPlace?.photos || enhancedPlace.photos.length === 0) {
       return (
         <View style={styles.heroImageContainer}>
-          <View style={styles.placeholderPhoto}>
-            <MaterialIcons name="place" size={sw * 0.2} color="#9CA3AF" />
-            <Text style={styles.placeholderText}>No Photos Available</Text>
-          </View>
+          <Image 
+            source={{ uri: 'https://via.placeholder.com/400x300/4F46E5/FFFFFF?text=No+Photos+Available' }} 
+            style={styles.heroImage} 
+            resizeMode="cover"
+          />
         </View>
       );
     }
@@ -113,7 +126,15 @@ const PlaceDetailScreen: React.FC<PlaceDetailScreenProps> = ({ route, navigation
     return (
       <View style={styles.heroImageContainer}>
         <FlatList
-          data={enhancedPlace.photos}
+          data={enhancedPlace?.photos || []}
+          renderItem={({ item, index }) => (
+            <Image 
+              source={{ uri: item }} 
+              style={styles.heroImage} 
+              resizeMode="cover"
+            />
+          )}
+          keyExtractor={(item, index) => index.toString()}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
@@ -121,23 +142,15 @@ const PlaceDetailScreen: React.FC<PlaceDetailScreenProps> = ({ route, navigation
             const index = Math.round(event.nativeEvent.contentOffset.x / sw);
             setCurrentPhotoIndex(index);
           }}
-          renderItem={({ item }) => (
-            <Image source={{ uri: item }} style={styles.heroImage} resizeMode="cover" />
-          )}
-          keyExtractor={(item, index) => `photo_${index}`}
         />
         
-        {/* Photo Indicators - White dots like in the design */}
-        <View style={styles.photoIndicators}>
-          {enhancedPlace.photos.map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.photoIndicator,
-                index === currentPhotoIndex && styles.photoIndicatorActive
-              ]}
-            />
-          ))}
+        {/* Photo Counter */}
+        <View style={styles.photoCounter}>
+          <Text style={styles.photoCounterText}>
+            {enhancedPlace?.photos?.map((_, index) => (
+              <Text key={index} style={styles.photoDot}>•</Text>
+            )) || null}
+          </Text>
         </View>
       </View>
     );
@@ -223,10 +236,10 @@ const PlaceDetailScreen: React.FC<PlaceDetailScreenProps> = ({ route, navigation
       <ScrollView style={styles.contentCard} showsVerticalScrollIndicator={false}>
         {/* Place Header */}
         <View style={styles.placeHeader}>
-          <Text style={styles.placeName}>{enhancedPlace.name}</Text>
-          <Text style={styles.placeType}>{enhancedPlace.type}</Text>
+          <Text style={styles.placeName}>{enhancedPlace?.name || 'Unknown Place'}</Text>
+          <Text style={styles.placeType}>{enhancedPlace?.type || 'Place'}</Text>
           <View style={styles.placeLocation}>
-            <Text style={styles.placeAddress}>{enhancedPlace.address}</Text>
+            <Text style={styles.placeAddress}>{enhancedPlace?.address || 'Address not available'}</Text>
             <TouchableOpacity onPress={getDirections}>
               <View style={styles.viewMapIcon}><Text style={styles.viewMapText}>View Map</Text></View>
             </TouchableOpacity>
@@ -234,27 +247,27 @@ const PlaceDetailScreen: React.FC<PlaceDetailScreenProps> = ({ route, navigation
           
           <View style={styles.ratingSection}>
             <MaterialIcons name="star" size={sw * 0.05} color="#EC4899" />
-            <Text style={styles.ratingText}>{enhancedPlace.rating}</Text>
+            <Text style={styles.ratingText}>{enhancedPlace?.rating || 0}</Text>
           </View>
           
-          <Text style={styles.priceText}>from VND {enhancedPlace.tourOptions?.[0]?.price ? enhancedPlace.tourOptions[0].price.toLocaleString() : '500,000'}/person</Text>
+          <Text style={styles.priceText}>from VND {enhancedPlace?.tourOptions?.[0]?.price ? enhancedPlace.tourOptions[0].price.toLocaleString() : '500,000'}/person</Text>
         </View>
         
         {/* About Section */}
         <View style={styles.aboutSection}>
           <Text style={styles.sectionTitle}>About</Text>
           <Text style={styles.aboutText}>
-            {enhancedPlace.description || 
+            {enhancedPlace?.description || 
               'Discover this amazing destination in Vietnam. Experience the rich culture, stunning landscapes, and unforgettable memories that await you.'}
           </Text>
         </View>
         
         {/* Amenities Section - Only show if available */}
-        {enhancedPlace.amenities && enhancedPlace.amenities.length > 0 && (
+        {enhancedPlace?.amenities && enhancedPlace.amenities.length > 0 && (
           <View style={styles.amenitiesSection}>
             <Text style={styles.sectionTitle}>Amenities</Text>
             <View style={styles.amenitiesGrid}>
-              {enhancedPlace.amenities.slice(0, 8).map((amenity: string, index: number) => {
+              {(enhancedPlace?.amenities || []).slice(0, 8).map((amenity: string, index: number) => {
                 // Map amenity names to appropriate icons
                 const getAmenityIcon = (amenityName: string) => {
                   const name = amenityName.toLowerCase();
@@ -303,27 +316,27 @@ const PlaceDetailScreen: React.FC<PlaceDetailScreenProps> = ({ route, navigation
         )}
         
         {/* Opening Hours */}
-        {enhancedPlace.openingHours && enhancedPlace.openingHours.length > 0 && (
+        {enhancedPlace?.openingHours && enhancedPlace.openingHours.length > 0 && (
           <View style={styles.hoursSection}>
             <Text style={styles.sectionTitle}>Opening Hours</Text>
-            {enhancedPlace.openingHours.map((hour, index) => (
+            {(enhancedPlace?.openingHours || []).map((hour, index) => (
               <Text key={index} style={styles.hourText}>{hour}</Text>
             ))}
           </View>
         )}
         
         {/* Available Tours */}
-        {enhancedPlace.tourOptions && enhancedPlace.tourOptions.length > 0 && (
+        {enhancedPlace?.tourOptions && enhancedPlace.tourOptions.length > 0 && (
           <View style={styles.toursSection}>
             <Text style={styles.sectionTitle}>Available Tours</Text>
             <View style={styles.toursGrid}>
-              {enhancedPlace.tourOptions.map((tour, index) => renderTourCard(tour, index))}
+              {(enhancedPlace?.tourOptions || []).map((tour, index) => renderTourCard(tour, index))}
             </View>
           </View>
         )}
         
         {/* Guest Reviews - Only show if there are reviews */}
-        {enhancedPlace.reviews && enhancedPlace.reviews.length > 0 && (
+        {enhancedPlace?.reviews && enhancedPlace.reviews.length > 0 && (
           <View style={styles.reviewsSection}>
             <View style={styles.reviewsHeader}>
               <Text style={styles.sectionTitle}>Guest Reviews</Text>
@@ -333,29 +346,29 @@ const PlaceDetailScreen: React.FC<PlaceDetailScreenProps> = ({ route, navigation
             </View>
             
             <View style={styles.ratingDisplay}>
-              <Text style={styles.largeRating}>{enhancedPlace.rating}</Text>
+              <Text style={styles.largeRating}>{enhancedPlace?.rating || 0}</Text>
               <View style={styles.starsRow}>
                 {[1, 2, 3, 4, 5].map((star) => (
                   <MaterialIcons 
                     key={star} 
                     name="star" 
                     size={sw * 0.06} 
-                    color={star <= enhancedPlace.rating ? "#EC4899" : "#E5E7EB"} 
+                    color={star <= (enhancedPlace?.rating || 0) ? "#EC4899" : "#E5E7EB"} 
                   />
                 ))}
               </View>
               <Text style={styles.reviewCount}>
-                {enhancedPlace.reviews.length > 0 
+                {(enhancedPlace?.reviews || []).length > 0 
                   ? 'Guest Reviews'
                   : 'No reviews yet'
                 }
               </Text>
             </View>
             
-            {enhancedPlace.reviews.map((review, index) => (
+            {(enhancedPlace?.reviews || []).map((review, index) => (
               <View key={review.id} style={styles.reviewItem}>
                 <Text style={styles.reviewAuthor}>{review.author}</Text>
-                <Text style={styles.reviewDate}>{review.date}</Text>
+                <Text style={styles.date}>{review.date}</Text>
                 <Text style={styles.reviewText}>{review.text}</Text>
               </View>
             ))}
@@ -365,6 +378,53 @@ const PlaceDetailScreen: React.FC<PlaceDetailScreenProps> = ({ route, navigation
         {/* Bottom Spacing */}
         <View style={styles.bottomSpacing} />
       </ScrollView>
+
+      {/* Book Now Button */}
+      <View style={styles.bookNowSection}>
+        <TouchableOpacity
+          style={styles.bookNowButton}
+          onPress={() => {
+            console.log('🎯 Book Now button pressed');
+            console.log('🎯 Navigation object:', navigation);
+            console.log('🎯 Available routes:', navigation.getState()?.routes?.map((r: any) => r.name));
+            
+            if (enhancedPlace?.tourOptions && enhancedPlace.tourOptions.length > 0) {
+              // Navigate to booking screen with tour data
+              console.log('🎯 Navigating to BookingScreen with tour data');
+              navigation.navigate('BookingScreen', {
+                type: 'tour',
+                itemId: enhancedPlace.id,
+                itemName: enhancedPlace.name,
+                itemImage: enhancedPlace.photos?.[0],
+                price: enhancedPlace.tourOptions[0].price,
+                currency: enhancedPlace.tourOptions[0].currency || 'VND',
+                additionalData: {
+                  tourId: enhancedPlace.tourOptions[0].id,
+                  duration: enhancedPlace.tourOptions[0].duration,
+                  provider: enhancedPlace.tourOptions[0].provider,
+                }
+              });
+            } else {
+              // Navigate to booking screen with place data
+              console.log('🎯 Navigating to BookingScreen with place data');
+              navigation.navigate('BookingScreen', {
+                type: 'tour',
+                itemId: enhancedPlace.id,
+                itemName: enhancedPlace.name,
+                itemImage: enhancedPlace.photos?.[0],
+                price: 500000, // Default price if no tour options
+                currency: 'VND',
+                additionalData: {
+                  placeType: enhancedPlace.type,
+                  address: enhancedPlace.address,
+                }
+              });
+            }
+          }}
+        >
+            <Text style={styles.bookNowButtonText}>Book Now</Text>      
+        </TouchableOpacity>
+      </View>
 
       {/* Chatbot */}
       <ChatbotWrapper />
@@ -730,7 +790,7 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginBottom: sh * 0.006,
   },
-  reviewDate: {
+  date: {
     fontSize: sw * 0.03,
     color: '#9CA3AF',
     marginBottom: sh * 0.01,
@@ -742,6 +802,55 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: sh * 0.15, // Increased from 0.12 to 0.15 for better chatbot positioning
+  },
+  carouselDot: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginHorizontal: 5,
+  },
+  carouselInactiveDot: {
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  carouselActiveDot: {
+    backgroundColor: 'white',
+  },
+  photoCounter: {
+    position: 'absolute',
+    bottom: sh * 0.02,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  photoCounterText: {
+    flexDirection: 'row',
+  },
+  photoDot: {
+    fontSize: sw * 0.04,
+    color: 'white',
+    marginHorizontal: sw * 0.005,
+  },
+  bookNowSection: {
+    backgroundColor: 'white',
+    paddingHorizontal: sw * 0.05,
+    paddingVertical: sh * 0.02,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  bookNowButton: {
+    backgroundColor: '#10B981',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: sh * 0.02,
+    borderRadius: sw * 0.03,
+    gap: sw * 0.02,
+  },
+  bookNowButtonText: {
+    color: 'white',
+    fontSize: sw * 0.05,
+    fontWeight: '600',
   },
 });
 

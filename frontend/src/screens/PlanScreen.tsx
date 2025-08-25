@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Alert, ActivityIndicator, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
+import { getBackendBaseUrl } from '../config/apiConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -29,10 +30,15 @@ const PlanScreen: React.FC = () => {
   const { token, isTokenExpired, logout } = useAuth();
   const [plans, setPlans] = useState<PlanCard[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
 
-  const getBackendBaseUrl = (): string => {
-    return 'http://192.168.0.100:5000';
-  };
+
 
   const fetchPlans = async () => {
     if (!token) return;
@@ -80,19 +86,63 @@ const PlanScreen: React.FC = () => {
     }
   };
 
-  const handlePlanPress = (plan: PlanCard) => {
-    // Navigate to PlanningDetailScreen with the plan data
-    (navigation as any).navigate('PlanningDetail', {
-      planId: plan.planId,
-      planningData: {
-        destinations: plan.destinations,
-        tripDays: plan.tripDays,
-        companion: plan.companion,
-        preferences: [],
-        budget: 0,
-      },
-      generatedPlan: plan.aiGeneratedContent || {},
-    });
+  const handlePlanPress = async (plan: PlanCard) => {
+    if (!token) return;
+    
+    setLoadingPlanId(plan.planId);
+    
+    try {
+      // Fetch the latest plan data from backend to ensure we have the most current information
+      const response = await fetch(`${getBackendBaseUrl()}/api/trip-plans/${plan.planId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch latest plan data');
+      }
+
+      const latestPlanData = await response.json();
+      
+      // Show brief success feedback
+      console.log(`✅ Successfully fetched latest data for plan: ${plan.planName}`);
+      
+      // Validate that we have the required data
+      if (!latestPlanData.tripPlan) {
+        throw new Error('Invalid plan data received from backend');
+      }
+      
+      // Navigate to PlanningDetailScreen with the latest plan data from backend
+      (navigation as any).navigate('PlanningDetail', {
+        planId: plan.planId,
+        planningData: {
+          destinations: latestPlanData.tripPlan.destinations || plan.destinations,
+          tripDays: latestPlanData.tripPlan.tripDays || plan.tripDays,
+          companion: latestPlanData.tripPlan.companion || plan.companion,
+          preferences: latestPlanData.tripPlan.preferences || [],
+          budget: latestPlanData.tripPlan.budget || 0,
+        },
+        generatedPlan: latestPlanData.tripPlan.aiGeneratedContent || plan.aiGeneratedContent || {},
+      });
+      
+    } catch (error) {
+      console.error('Error fetching latest plan data:', error);
+      // Fallback to using the plan data from the list if backend fetch fails
+      (navigation as any).navigate('PlanningDetail', {
+        planId: plan.planId,
+        planningData: {
+          destinations: plan.destinations,
+          tripDays: plan.tripDays,
+          companion: plan.companion,
+          preferences: [],
+          budget: 0,
+        },
+        generatedPlan: plan.aiGeneratedContent || {},
+      });
+    } finally {
+      setLoadingPlanId(null);
+    }
   };
 
   const handlePlanWithTravie = () => {
@@ -111,8 +161,43 @@ const PlanScreen: React.FC = () => {
   };
 
   const handleDeletePlan = (planId: string) => {
-    // TODO: Implement delete logic
-    console.log('Delete plan:', planId);
+    setDeletePlanId(planId);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletePlanId || !token) {
+      setShowDeleteModal(false);
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`${getBackendBaseUrl()}/api/trip-plans/${deletePlanId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete plan');
+      }
+
+      // Remove the plan from local state
+      setPlans(prevPlans => prevPlans.filter(plan => plan.planId !== deletePlanId));
+      
+      setShowDeleteModal(false);
+      setShowSuccessModal(true);
+    } catch (error) {
+      console.error('Error deleting plan:', error);
+      setErrorMessage('Unable to delete the travel plan. Please check your connection and try again.');
+      setShowDeleteModal(false);
+      setShowErrorModal(true);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   if (isLoading) {
@@ -188,15 +273,20 @@ const PlanScreen: React.FC = () => {
           {plans.map((plan) => (
             <TouchableOpacity 
               key={plan.planId} 
-              style={styles.planCard}
+              style={[styles.planCard, loadingPlanId === plan.planId && styles.planCardLoading]}
               onPress={() => handlePlanPress(plan)}
+              disabled={loadingPlanId === plan.planId}
+              activeOpacity={loadingPlanId === plan.planId ? 1 : 0.8}
             >
               <View style={styles.planCardLeft}>
                 <View style={styles.locationIconContainer}>
                   <Ionicons name="location" size={16} color="#fff" />
                 </View>
                 <View style={styles.planInfo}>
-                  <Text style={styles.planTitle}>{plan.planName}</Text>
+                  <View style={styles.planTitleContainer}>
+                    <Text style={styles.planTitle}>{plan.planName}</Text>
+                  </View>
+                  
                   <View style={styles.planDetails}>
                     <Text style={styles.planDetailText}>• {plan.tripDays} days</Text>
                     <Text style={styles.planDetailText}>• {plan.companion}</Text>
@@ -206,26 +296,137 @@ const PlanScreen: React.FC = () => {
               </View>
               
               <View style={styles.planCardRight}>
-                <TouchableOpacity 
-                  style={styles.actionButton}
-                  onPress={() => handleEditPlan(plan.planId)}
-                  activeOpacity={0.7}
-                >
-                  <Feather name="edit-3" size={18} color="#B3B4BB" />
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={styles.actionButton}
-                  onPress={() => handleDeletePlan(plan.planId)}
-                  activeOpacity={0.7}
-                >
-                  <Feather name="trash-2" size={18} color="#B3B4BB" />
-                </TouchableOpacity>
+                {loadingPlanId === plan.planId ? (
+                  <ActivityIndicator size="small" color="#FF6B9D" />
+                ) : (
+                  <>
+                    <TouchableOpacity 
+                      style={styles.actionButton}
+                      onPress={() => handleEditPlan(plan.planId)}
+                      activeOpacity={0.7}
+                    >
+                      <Feather name="edit-3" size={18} color="#B3B4BB" />
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                      style={styles.actionButton}
+                      onPress={() => handleDeletePlan(plan.planId)}
+                      activeOpacity={0.7}
+                    >
+                      <Feather name="trash-2" size={18} color="#B3B4BB" />
+                    </TouchableOpacity>
+                  </>
+                )}
               </View>
             </TouchableOpacity>
           ))}
         </View>
       </ScrollView>
+
+      {/* Custom Delete Confirmation Modal */}
+      <Modal
+        visible={showDeleteModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowDeleteModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalIconContainer}>
+                <MaterialCommunityIcons name="delete-alert" size={32} color="#FF6B9D" />
+              </View>
+              <Text style={styles.modalTitle}>Delete Travel Plan</Text>
+              <Text style={styles.modalMessage}>
+                This action will permanently delete your travel plan and all associated data. Are you sure you want to continue?
+              </Text>
+            </View>
+            
+            <View style={styles.modalActions}>
+              <TouchableOpacity 
+                style={styles.modalButtonCancel}
+                onPress={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+              >
+                <Text style={styles.modalButtonCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.modalButtonDelete}
+                onPress={confirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <MaterialCommunityIcons name="delete" size={20} color="#fff" />
+                )}
+                <Text style={styles.modalButtonDeleteText}>
+                  {isDeleting ? 'Deleting...' : 'Delete Plan'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Success Modal */}
+      <Modal
+        visible={showSuccessModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowSuccessModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <View style={[styles.modalIconContainer, styles.successIconContainer]}>
+                <MaterialCommunityIcons name="check-circle" size={32} color="#4CBC71" />
+              </View>
+              <Text style={styles.modalTitle}>Plan Deleted Successfully!</Text>
+              <Text style={styles.modalMessage}>
+                Your travel plan has been permanently removed from your account.
+              </Text>
+            </View>
+            
+            <TouchableOpacity 
+              style={styles.modalButtonSuccess}
+              onPress={() => setShowSuccessModal(false)}
+            >
+              <Text style={styles.modalButtonSuccessText}>Continue</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Error Modal */}
+      <Modal
+        visible={showErrorModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowErrorModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <View style={[styles.modalIconContainer, styles.errorIconContainer]}>
+                <MaterialCommunityIcons name="alert-circle" size={32} color="#FF6B9D" />
+              </View>
+              <Text style={styles.modalTitle}>Deletion Failed</Text>
+              <Text style={styles.modalMessage}>
+                {errorMessage}
+              </Text>
+            </View>
+            
+            <TouchableOpacity 
+              style={styles.modalButtonError}
+              onPress={() => setShowErrorModal(false)}
+            >
+              <Text style={styles.modalButtonErrorText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
     </View>
   );
@@ -370,6 +571,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  planCardLoading: {
+    opacity: 0.7, // Make the card look disabled
+  },
   planCardLeft: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -387,12 +591,25 @@ const styles = StyleSheet.create({
   planInfo: {
     flex: 1,
   },
+  planTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   planTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#4CBC71',
     marginBottom: 8,
     lineHeight: 22,
+  },
+  planTitleLoader: {
+    marginLeft: 8,
+  },
+  planLoadingText: {
+    fontSize: 12,
+    color: '#FF6B9D',
+    fontStyle: 'italic',
+    marginBottom: 4,
   },
   planDetails: {
     marginBottom: 8,
@@ -429,6 +646,137 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     color: '#8E8E93',
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    marginHorizontal: 24,
+    width: '85%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#FFF5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  successIconContainer: {
+    backgroundColor: '#F0FFF0',
+  },
+  errorIconContainer: {
+    backgroundColor: '#FFF5F5',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1C1C1E',
+    textAlign: 'center',
+    marginBottom: 12,
+    lineHeight: 28,
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: '#8E8E93',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButtonCancel: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#8E8E93',
+    shadowColor: '#8E8E93',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  modalButtonCancelText: {
+    color: '#8E8E93',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalButtonDelete: {
+    flex: 1,
+    backgroundColor: '#FF6B9D',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#FF6B9D',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  modalButtonDeleteText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalButtonSuccess: {
+    backgroundColor: '#4CBC71',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    shadowColor: '#4CBC71',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  modalButtonSuccessText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalButtonError: {
+    backgroundColor: '#FF6B9D',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    shadowColor: '#FF6B9D',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  modalButtonErrorText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

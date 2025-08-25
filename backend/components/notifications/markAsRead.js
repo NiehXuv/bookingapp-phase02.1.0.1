@@ -10,7 +10,7 @@ async function markAsRead(req, res) {
     }
 
     // Get existing notification
-    const notificationRef = `Users/${uid}`/`notifications/${notificationId}`;
+    const notificationRef = ref(database, `Users/${uid}/notifications/${notificationId}`);
     const snapshot = await get(notificationRef);
 
     if (!snapshot.exists()) {
@@ -26,7 +26,7 @@ async function markAsRead(req, res) {
       updatedAt: Date.now()
     };
 
-    await set(notificationRef, updatedNotification);
+    await set(ref(database, `Users/${uid}/notifications/${notificationId}`), updatedNotification);
 
     res.status(200).json({
       message: "Notification marked as read successfully",

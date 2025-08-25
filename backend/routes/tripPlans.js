@@ -6,6 +6,8 @@ const {
   getTripPlan,
   getAllTripPlans,
   updateTripPlan,
+  updateActivityTime,
+  addActivity,
   deleteTripPlan,
   generateTripPlan
 } = require('../components/tripPlans');
@@ -27,6 +29,12 @@ router.get('/:planId', getTripPlan);
 
 // Update a trip plan
 router.put('/:planId', updateTripPlan);
+
+// Update activity time and day
+router.put('/:planId/activities/time', updateActivityTime);
+
+// Add new activity to a day
+router.post('/:planId/activities', addActivity);
 
 // Delete a trip plan
 router.delete('/:planId', deleteTripPlan);

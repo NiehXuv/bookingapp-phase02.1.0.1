@@ -9,7 +9,15 @@ async function deleteTripPlan(req, res) {
       return res.status(400).json({ error: "Plan ID is required" });
     }
 
-    const tripPlanRef = `Users/${uid}/tripPlans/${planId}`;
+    // Try to find the trip plan with different planId variations
+    let tripPlanRef = `Users/${uid}/tripPlans/${planId}`;
+    
+    // If not found, try with leading hyphen
+    if (!planId.startsWith('-')) {
+      const planIdWithHyphen = `-${planId}`;
+      tripPlanRef = `Users/${uid}/tripPlans/${planIdWithHyphen}`;
+      console.log('🔍 Backend deleteTripPlan: Using hyphen prefix:', tripPlanRef);
+    }
     
     // Delete the trip plan
     await remove(tripPlanRef);

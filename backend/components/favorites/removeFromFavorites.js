@@ -13,20 +13,20 @@ async function removeFromFavorites(req, res) {
     }
 
     // Validate favorite type
-    const validTypes = ["hotels", "places", "tours"];
+    const validTypes = ["hotels", "places", "tours", "content"];
     if (!validTypes.includes(type)) {
       return res.status(400).json({ error: "Invalid favorite type" });
     }
 
     // Get existing favorites
-    const favoritesRef = `Users/${uid}`/favorites;
+    const favoritesRef = `Users/${uid}/favorites`;
     const snapshot = await get(favoritesRef);
 
     if (!snapshot.exists()) {
       return res.status(404).json({ error: "No favorites found" });
     }
 
-    let favorites = snapshot.val();
+    let favorites = snapshot.val() || {};
 
     // Check if type exists in favorites
     if (!favorites[type] || !Array.isArray(favorites[type])) {
@@ -34,12 +34,22 @@ async function removeFromFavorites(req, res) {
     }
 
     // Check if item is in favorites
-    if (!favorites[type].includes(itemId)) {
-      return res.status(404).json({ error: "Item not found in favorites" });
+    if (type === "content") {
+      const existingIndex = favorites[type].findIndex(item => item.id === itemId);
+      if (existingIndex === -1) {
+        return res.status(404).json({ error: "Item not found in favorites" });
+      }
+      
+      // Remove content item from favorites
+      favorites[type].splice(existingIndex, 1);
+    } else {
+      if (!favorites[type].includes(itemId)) {
+        return res.status(404).json({ error: "Item not found in favorites" });
+      }
+      
+      // Remove item from favorites
+      favorites[type] = favorites[type].filter(id => id !== itemId);
     }
-
-    // Remove item from favorites
-    favorites[type] = favorites[type].filter(id => id !== itemId);
 
     // Update favorites in database
     await set(favoritesRef, favorites);

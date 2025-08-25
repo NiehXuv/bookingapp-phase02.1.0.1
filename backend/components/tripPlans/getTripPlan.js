@@ -9,8 +9,25 @@ async function getTripPlan(req, res) {
       return res.status(400).json({ error: "Plan ID is required" });
     }
 
-    const tripPlanRef = `Users/${uid}/tripPlans/${planId}`;
-    const snapshot = await get(tripPlanRef);
+    // Try to find the trip plan with different planId variations
+    let tripPlanRef = `Users/${uid}/tripPlans/${planId}`;
+    let snapshot = await get(tripPlanRef);
+    
+    // If not found, try with leading hyphen
+    if (!snapshot.exists() && !planId.startsWith('-')) {
+      const planIdWithHyphen = `-${planId}`;
+      tripPlanRef = `Users/${uid}/tripPlans/${planIdWithHyphen}`;
+      console.log('🔍 Backend getTripPlan: Trying with hyphen prefix:', tripPlanRef);
+      snapshot = await get(tripPlanRef);
+    }
+    
+    // If still not found, try without leading hyphen
+    if (!snapshot.exists() && planId.startsWith('-')) {
+      const planIdWithoutHyphen = planId.substring(1);
+      tripPlanRef = `Users/${uid}/tripPlans/${planIdWithoutHyphen}`;
+      console.log('🔍 Backend getTripPlan: Trying without hyphen prefix:', tripPlanRef);
+      snapshot = await get(tripPlanRef);
+    }
 
     if (!snapshot.exists()) {
       return res.status(404).json({ error: "Trip plan not found" });

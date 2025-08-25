@@ -32,8 +32,16 @@ export class EnhancedPlaceService {
   async getTourDetails(tourData: any, coordinates: any): Promise<EnhancedPlace> {
     try {
       console.log('🎯 EnhancedPlaceService: Processing tour data directly');
+      console.log('🎯 Tour data received:', tourData);
       
-      // Transform tour data to EnhancedPlace format
+      // Ensure openingHours is always an array
+      const safeOpeningHours = Array.isArray(tourData.openingHours) 
+        ? tourData.openingHours 
+        : (tourData.openingHours ? [tourData.openingHours] : ['Open daily']);
+      
+      console.log('🎯 Safe opening hours:', safeOpeningHours);
+      
+      // Transform tour data to EnhancedPlace format, preserving ALL Google Places API data
       const enhancedPlace: EnhancedPlace = {
         id: tourData.id || `tour_${Date.now()}`,
         name: tourData.name || 'Tour Experience',
@@ -41,29 +49,56 @@ export class EnhancedPlaceService {
         address: tourData.address || 'Vietnam',
         coordinates: coordinates,
         rating: tourData.rating || 4.0,
-        photos: tourData.photos || ['https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop'],
-        description: tourData.description || 'No description available.',
-        amenities: tourData.amenities || ['Tour', 'Experience', 'Local Guide'],
-        openingHours: tourData.openingHours || ['Open daily'],
-        tourOptions: tourData.tourOptions || [{
-          id: tourData.id || `tour_${Date.now()}`,
-          name: tourData.name || 'Tour Experience',
-          price: tourData.price || 500000,
-          currency: 'VND',
-          duration: '2-3 hours',
-          description: tourData.description || 'Experience this amazing tour.',
-          provider: 'Local Tours'
-        }],
-        reviews: tourData.reviews || [{
-          id: '1',
-          author: 'Local Guide',
-          date: 'Recent',
-          text: 'Highly recommended experience!',
-          rating: 5,
-          helpful: 12
-        }],
+        // Preserve ALL photos from Google Places API
+        photos: tourData.photos && Array.isArray(tourData.photos) && tourData.photos.length > 0 
+          ? tourData.photos 
+          : ['https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop'],
+        // Preserve ALL reviews from Google Places API
+        reviews: tourData.reviews && Array.isArray(tourData.reviews) && tourData.reviews.length > 0
+          ? tourData.reviews.map((review: any, index: number) => ({
+              id: review.id || `review_${index}`,
+              author: review.author_name || review.author || 'Google User',
+              date: review.date || review.relative_time_description || 'Recent',
+              text: review.text || 'Great experience!',
+              rating: review.rating || 5,
+              helpful: Math.floor(Math.random() * 20) + 1
+            }))
+          : [{
+              id: '1',
+              author: 'Local Guide',
+              date: 'Recent',
+              text: 'Highly recommended experience!',
+              rating: 5,
+              helpful: 12
+            }],
+        // Preserve description from Google Places API
+        description: tourData.editorialSummary || tourData.description || 'No description available.',
+        // Preserve amenities or generate based on type
+        amenities: tourData.amenities && Array.isArray(tourData.amenities) && tourData.amenities.length > 0
+          ? tourData.amenities
+          : ['Tour', 'Experience', 'Local Guide'],
+        openingHours: safeOpeningHours,
+        // Preserve tour options or create default
+        tourOptions: tourData.tourOptions && Array.isArray(tourData.tourOptions) && tourData.tourOptions.length > 0
+          ? tourData.tourOptions
+          : [{
+              id: tourData.id || `tour_${Date.now()}`,
+              name: tourData.name || 'Tour Experience',
+              price: tourData.price || 500000,
+              currency: 'VND',
+              duration: '2-3 hours',
+              description: tourData.editorialSummary || tourData.description || 'Experience this amazing tour.',
+              provider: 'Local Tours'
+            }],
         ticketsAvailable: true
       };
+      
+      console.log('🎯 Enhanced place created with preserved data:', {
+        photosCount: enhancedPlace.photos.length,
+        reviewsCount: enhancedPlace.reviews?.length || 0,
+        description: enhancedPlace.description,
+        openingHours: enhancedPlace.openingHours
+      });
       
       return enhancedPlace;
     } catch (error) {
@@ -114,7 +149,7 @@ export class EnhancedPlaceService {
     ];
 
     // Use real Google opening hours or fallback to mock data
-    const openingHours = google.openingHours && google.openingHours.length > 0
+    const openingHours = google.openingHours && Array.isArray(google.openingHours) && google.openingHours.length > 0
       ? google.openingHours // Google provides detailed opening hours array
       : [
           'Monday: 9:00 AM - 6:00 PM',
@@ -125,6 +160,8 @@ export class EnhancedPlaceService {
           'Saturday: 9:00 AM - 6:00 PM',
           'Sunday: 9:00 AM - 6:00 PM'
         ];
+    
+    console.log('🎯 EnhancedPlaceService: Opening hours processed:', openingHours);
 
     // Generate dynamic amenities based on place type and available data
     const generateAmenities = (placeType: string, types: string[]): string[] => {

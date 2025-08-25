@@ -36,6 +36,8 @@ app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/favorites', require('./routes/favorites'));
 app.use('/api/user-profile', require('./routes/userProfile'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/chat', require('./routes/chat'));
+app.use('/api/friends', require('./routes/friends'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

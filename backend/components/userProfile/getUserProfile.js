@@ -1,11 +1,11 @@
-const { database, get } = require("../../config/firebaseconfig.js");
+const { database, get, ref } = require("../../config/firebaseconfig.js");
 
 async function getUserProfile(req, res) {
   try {
     const { uid } = req.user; // From JWT token
 
-    const userProfileRef = `Users/${uid}`/profile;
-    const snapshot = await get(userProfileRef);
+    const userProfileRef = `Users/${uid}/profile`;
+    const snapshot = await get(ref(database, userProfileRef));
 
     if (!snapshot.exists()) {
       return res.status(404).json({ error: "User profile not found" });
