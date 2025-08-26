@@ -349,6 +349,62 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
         <View style={styles.bottomSpacing} />
       </ScrollView>
 
+      {/* Book Now Button */}
+      <View style={styles.bookNowSection}>
+        <TouchableOpacity
+          style={styles.bookNowButton}
+          onPress={() => {
+            console.log('🏨 Book Now button pressed');
+            console.log('🏨 Navigation object:', navigation);
+            console.log('🏨 Available routes:', navigation.getState()?.routes?.map((r: any) => r.name));
+            
+            if (enhancedHotel?.roomTypes && enhancedHotel.roomTypes.length > 0) {
+              // Navigate to booking screen with room data
+              console.log('🏨 Navigating to BookingScreen with room data');
+              navigation.navigate('BookingScreen', {
+                type: 'hotel',
+                itemId: enhancedHotel.id,
+                itemName: enhancedHotel.name,
+                itemImage: enhancedHotel.photos?.[0],
+                price: enhancedHotel.roomTypes[0].price,
+                currency: enhancedHotel.roomTypes[0].currency || 'VND',
+                additionalData: {
+                  hotelId: enhancedHotel.id,
+                  roomType: enhancedHotel.roomTypes[0].type,
+                  amenities: enhancedHotel.roomTypes[0].amenities,
+                  address: enhancedHotel.address,
+                }
+              });
+            } else {
+              // Navigate to booking screen with hotel data
+              console.log('🏨 Navigating to BookingScreen with hotel data');
+              navigation.navigate('BookingScreen', {
+                type: 'hotel',
+                itemId: enhancedHotel.id,
+                itemName: enhancedHotel.name,
+                itemImage: enhancedHotel.photos?.[0],
+                price: price || 1500000, // Use price from route params or default
+                currency: 'VND',
+                additionalData: {
+                  address: enhancedHotel.address,
+                  rating: enhancedHotel.rating,
+                }
+              });
+            }
+          }}
+        >
+          <LinearGradient
+            colors={['#FF6B9D', '#FF8E53']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.bookNowGradient}
+          >
+            <MaterialIcons name="hotel" size={24} color="white" />
+            <Text style={styles.bookNowButtonText}>Book Now</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+
       {/* Chatbot */}
       <ChatbotWrapper />
     </View>
@@ -716,6 +772,35 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: sh * 0.15, // Increased from 0.12 to 0.15 for better chatbot positioning
+  },
+  bookNowSection: {
+    backgroundColor: 'white',
+    paddingHorizontal: sw * 0.05,
+    paddingVertical: sh * 0.02,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  bookNowButton: {
+    backgroundColor: '#10B981',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: sh * 0.02,
+    borderRadius: sw * 0.03,
+    gap: sw * 0.02,
+  },
+  bookNowButtonText: {
+    color: 'white',
+    fontSize: sw * 0.05,
+    fontWeight: '600',
+  },
+  bookNowGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: sh * 0.02,
+    borderRadius: sw * 0.03,
+    gap: sw * 0.02,
   },
 });
 

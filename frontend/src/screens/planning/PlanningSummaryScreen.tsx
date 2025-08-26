@@ -5,6 +5,7 @@ import { MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import geminiService, { PlanningData } from '../../services/geminiService';
+import { getBackendBaseUrl } from '../../config/apiConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -23,9 +24,7 @@ const PlanningSummaryScreen: React.FC = () => {
     budget: 200,
   };
 
-  const getBackendBaseUrl = (): string => {
-    return 'http://192.168.0.100:5000';
-  };
+
 
   const handleEditPlan = () => {
     // Navigate back to PlanningFlow to edit the plan

@@ -5,7 +5,7 @@ async function getFavorites(req, res) {
     const { uid } = req.user; // From JWT token
     const { type } = req.query; // Optional filter by type
 
-    const favoritesRef = `Users/${uid}`/favorites;
+    const favoritesRef = `Users/${uid}/favorites`;
     const snapshot = await get(favoritesRef);
 
     if (!snapshot.exists()) {
@@ -14,17 +14,19 @@ async function getFavorites(req, res) {
         favorites: {
           hotels: [],
           places: [],
-          tours: []
+          tours: [],
+          content: []
         }
       });
     }
 
-    let favorites = snapshot.val();
+    let favorites = snapshot.val() || {};
 
     // Initialize arrays if they don't exist
     if (!favorites.hotels) favorites.hotels = [];
     if (!favorites.places) favorites.places = [];
     if (!favorites.tours) favorites.tours = [];
+    if (!favorites.content) favorites.content = [];
 
     // Filter by type if provided
     if (type) {
@@ -43,7 +45,8 @@ async function getFavorites(req, res) {
       counts: {
         hotels: favorites.hotels ? favorites.hotels.length : 0,
         places: favorites.places ? favorites.places.length : 0,
-        tours: favorites.tours ? favorites.tours.length : 0
+        tours: favorites.tours ? favorites.tours.length : 0,
+        content: favorites.content ? favorites.content.length : 0
       }
     });
 

@@ -2,8 +2,8 @@
 export const API_CONFIG = {
   BACKEND: {
     // Using your computer's actual IP address for Expo compatibility
-    // Your IP: 192.168.0.100
-    BASE_URL: process.env.BACKEND_URL || 'http://192.168.0.100:5000',
+          // Your IP: 192.168.1.88
+    BASE_URL: process.env.BACKEND_URL || 'http://192.168.1.88:5000',
   },
   YOUTUBE: {
     API_KEY: 'AIzaSyCtbREGKCFH0eDSA065TYqT7p4B0TLcw6Y', 

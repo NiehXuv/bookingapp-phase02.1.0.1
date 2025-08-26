@@ -9,10 +9,11 @@ async function createBooking(req, res) {
       date,
       time,
       type,
+      guestsNumber,
       details
     } = req.body;
 
-    if (!title || !description || !date || !time || !type || !details) {
+    if (!title || !description || !date || !time || !type || !guestsNumber || !details) {
       return res.status(400).json({ error: "All required fields must be provided" });
     }
 
@@ -39,6 +40,7 @@ async function createBooking(req, res) {
       date,
       time,
       type,
+      guestsNumber: parseInt(guestsNumber) || 1,
       status: "pending",
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -52,11 +54,11 @@ async function createBooking(req, res) {
     };
 
     // Create new booking with auto-generated ID
-    const bookingsRef = `Users/${uid}`/bookings;
-    const newBookingRef = push(bookingsRef);
+    const bookingsRef = `Users/${uid}/bookings`;
+    const newBookingRef = push(ref(database, bookingsRef));
     const bookingId = newBookingRef.key;
 
-    await set(`bookings/${bookingId}`, bookingData);
+    await set(ref(database, `Users/${uid}/bookings/${bookingId}`), bookingData);
 
     res.status(201).json({
       message: "Booking created successfully",

@@ -7,13 +7,13 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../screens/HomeScreen';
 import ExploreScreen from '../screens/ExploreScreen';
 import ReelsScreen from '../screens/PlanScreen';
-import BookingScreen from '../screens/BookingScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import HotelDetailScreen from '../screens/HotelDetailScreen';
 import PlaceDetailScreen from '../screens/PlaceDetailScreen';
 import DetailScreen from '../screens/ContentDetailScreen';
 import LoginScreen from '../screens/LoginScreen';
 import SignUpScreen from '../screens/SignUpScreen';
+import BookingScreen from '../screens/BookingScreen';
 
 
 // Import components
@@ -81,6 +81,15 @@ const AppNavigator = () => {
           options={{ 
             headerShown: true,
             title: 'Content Details',
+            headerBackTitle: 'Back'
+          }}
+        />
+        <Stack.Screen 
+          name="BookingScreen" 
+          component={BookingScreen}
+          options={{ 
+            headerShown: true,
+            title: 'Book Now',
             headerBackTitle: 'Back'
           }}
         />

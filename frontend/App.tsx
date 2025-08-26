@@ -30,6 +30,11 @@ import PlanningSummaryScreen from './src/screens/planning/PlanningSummaryScreen'
 import PlanningDetailScreen from './src/screens/planning/PlanningDetailScreen';
 import PlanManualScreen from './src/screens/planning/PlanManualScreen';
 import ExploreScreen from './src/screens/ExploreScreen';
+import BookingScreen from './src/screens/BookingScreen';
+import UserProfileScreen from './src/screens/UserProfileScreen';
+
+// Chat Screens
+import { UserSearchScreen, AddFriendScreen, ChatScreen } from './src/screens/chat';
 
 // Context
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -82,6 +87,33 @@ function RootNavigator() {
             <Stack.Screen name="PlanningDetail" component={PlanningDetailScreen} />
             <Stack.Screen name="PlanManual" component={PlanManualScreen} />
             <Stack.Screen name="Inbox" component={InboxScreen} />
+            
+            {/* Booking Screen */}
+            <Stack.Screen 
+              name="BookingScreen" 
+              component={BookingScreen as any}
+              options={{ 
+                headerShown: true,
+                title: 'Book Now',
+                headerBackTitle: 'Back'
+              }}
+            />
+            
+            {/* User Profile Screen */}
+            <Stack.Screen 
+              name="UserProfile" 
+              component={UserProfileScreen as any}
+              options={{ 
+                headerShown: true,
+                title: 'Profile',
+                headerBackTitle: 'Back'
+              }}
+            />
+            
+            {/* Chat Screens */}
+            <Stack.Screen name="UserSearchScreen" component={UserSearchScreen} />
+            <Stack.Screen name="AddFriendScreen" component={AddFriendScreen} />
+            <Stack.Screen name="ChatScreen" component={ChatScreen} />
           </>
         )}
       </Stack.Navigator>

@@ -5,7 +5,8 @@ async function addToFavorites(req, res) {
     const { uid } = req.user; // From JWT token
     const {
       type,
-      itemId
+      itemId,
+      contentData
     } = req.body;
 
     if (!type || !itemId) {
@@ -13,18 +14,18 @@ async function addToFavorites(req, res) {
     }
 
     // Validate favorite type
-    const validTypes = ["hotels", "places", "tours"];
+    const validTypes = ["hotels", "places", "tours", "content"];
     if (!validTypes.includes(type)) {
       return res.status(400).json({ error: "Invalid favorite type" });
     }
 
     // Get existing favorites
-    const favoritesRef = `Users/${uid}`/favorites;
+    const favoritesRef = `Users/${uid}/favorites`;
     const snapshot = await get(favoritesRef);
 
     let favorites = {};
     if (snapshot.exists()) {
-      favorites = snapshot.val();
+      favorites = snapshot.val() || {};
     }
 
     // Initialize arrays if they don't exist
@@ -32,13 +33,25 @@ async function addToFavorites(req, res) {
       favorites[type] = [];
     }
 
-    // Check if item is already in favorites
-    if (favorites[type].includes(itemId)) {
-      return res.status(400).json({ error: "Item is already in favorites" });
+    // For content type, store the full content data
+    if (type === "content") {
+      // Check if item is already in favorites
+      const existingIndex = favorites[type].findIndex(item => item.id === itemId);
+      if (existingIndex !== -1) {
+        return res.status(400).json({ error: "Item is already in favorites" });
+      }
+      
+      // Add content data to favorites
+      favorites[type].push(contentData || { id: itemId });
+    } else {
+      // Check if item is already in favorites
+      if (favorites[type].includes(itemId)) {
+        return res.status(400).json({ error: "Item is already in favorites" });
+      }
+      
+      // Add item to favorites
+      favorites[type].push(itemId);
     }
-
-    // Add item to favorites
-    favorites[type].push(itemId);
 
     // Update favorites in database
     await set(favoritesRef, favorites);

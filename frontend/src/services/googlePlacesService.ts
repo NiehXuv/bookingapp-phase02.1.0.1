@@ -67,9 +67,13 @@ class GooglePlacesService {
   async searchPlaces(query: string, location?: string, radius?: number): Promise<GooglePlace[]> {
     try {
       if (!this.apiKey || this.apiKey === 'YOUR_GOOGLE_PLACES_API_KEY') {
-        console.warn('Google Places API key not set, using mock data');
+        console.warn('⚠️ Google Places API key not set, using mock data');
         return this.getMockPlaces(query);
       }
+
+      console.log('🎯 GooglePlacesService: Searching places for query:', query);
+      console.log('🎯 GooglePlacesService: Location:', location);
+      console.log('🎯 GooglePlacesService: Radius:', radius);
 
       const params = new URLSearchParams({
         query: `${query} ${location || 'Hanoi, Vietnam'}`,
@@ -83,16 +87,30 @@ class GooglePlacesService {
         params.append('radius', radius.toString());
       }
 
-      const response = await fetch(`${this.baseUrl}/textsearch/json?${params}`);
+      const url = `${this.baseUrl}/textsearch/json?${params}`;
+      console.log('🎯 GooglePlacesService: Search URL:', url);
+
+      const response = await fetch(url);
       
       if (!response.ok) {
         throw new Error(`Google Places API error: ${response.status}`);
       }
 
       const data = await response.json();
+      
+      console.log('🎯 GooglePlacesService: Search response:', {
+        status: data.status,
+        resultsCount: data.results?.length || 0,
+        firstResult: data.results?.[0] ? {
+          name: data.results[0].name,
+          place_id: data.results[0].place_id,
+          photosCount: data.results[0].photos?.length || 0
+        } : 'No results'
+      });
+      
       return this.transformPlacesResponse(data);
     } catch (error) {
-      console.error('Error searching places:', error);
+      console.error('❌ Error searching places:', error);
       return this.getMockPlaces(query);
     }
   }
@@ -301,8 +319,12 @@ class GooglePlacesService {
   async getPlaceDetails(placeId: string): Promise<GooglePlace | null> {
     try {
       if (!this.apiKey || this.apiKey === 'YOUR_GOOGLE_PLACES_API_KEY') {
+        console.warn('⚠️ Google Places API key not set, using mock data');
         return null;
       }
+
+      console.log('🎯 GooglePlacesService: Getting place details for:', placeId);
+      console.log('🎯 GooglePlacesService: Using API key:', this.apiKey ? 'Set' : 'Not set');
 
       const params = new URLSearchParams({
         place_id: placeId,
@@ -313,13 +335,27 @@ class GooglePlacesService {
         reviews_sort: 'newest'
       });
 
-      const response = await fetch(`${this.baseUrl}/details/json?${params}`);
+      const url = `${this.baseUrl}/details/json?${params}`;
+      console.log('🎯 GooglePlacesService: Requesting URL:', url);
+
+      const response = await fetch(url);
       
       if (!response.ok) {
         throw new Error(`Google Places API error: ${response.status}`);
       }
 
       const data = await response.json();
+      
+      console.log('🎯 GooglePlacesService: Raw API response:', {
+        status: data.status,
+        result: data.result ? {
+          name: data.result.name,
+          photosCount: data.result.photos?.length || 0,
+          reviewsCount: data.result.reviews?.length || 0,
+          editorialSummary: data.result.editorial_summary?.overview ? 'Present' : 'Missing',
+          types: data.result.types?.length || 0
+        } : 'No result'
+      });
       
       // Debug logging to see review count
       if (data.result && data.result.reviews) {
@@ -328,7 +364,7 @@ class GooglePlacesService {
       
       return this.transformPlaceDetails(data.result);
     } catch (error) {
-      console.error('Error getting place details:', error);
+      console.error('❌ Error getting place details:', error);
       return null;
     }
   }
@@ -336,30 +372,52 @@ class GooglePlacesService {
   // Transform Google Places response
   private transformPlacesResponse(data: any): GooglePlace[] {
     try {
-      return data.results?.map((result: any, index: number) => ({
-        id: result.place_id || `place_${index}`,
-        name: result.name || 'Unknown place',
-        type: result.types?.[0] || 'Point of Interest',
-        types: result.types || [], // Include all types for amenity generation
-        coordinates: {
-          lat: result.geometry?.location?.lat || 0,
-          lng: result.geometry?.location?.lng || 0
-        },
-        rating: result.rating || 0,
-        address: result.formatted_address || 'Unknown address',
-        phone: result.formatted_phone_number,
-        website: result.website,
-        photos: result.photos?.map((photo: any) => 
-          `${this.baseUrl}/photo?maxwidth=400&photoreference=${photo.photo_reference}&key=${this.apiKey}`
-        ),
-        openingHours: result.opening_hours?.open_now ? 'Open now' : 'Closed',
-        priceLevel: result.price_level,
-        userRatingsTotal: result.user_ratings_total,
-        reviews: result.reviews,
-        editorialSummary: result.editorial_summary?.overview
-      })) || [];
+      console.log('🎯 GooglePlacesService: Transforming search results:', {
+        resultsCount: data.results?.length || 0,
+        firstResult: data.results?.[0] ? {
+          place_id: data.results[0].place_id,
+          name: data.results[0].name,
+          photosCount: data.results[0].photos?.length || 0
+        } : 'No results'
+      });
+      
+      const transformed = data.results?.map((result: any, index: number) => {
+        const place = {
+          id: result.place_id || `place_${index}`,
+          name: result.name || 'Unknown place',
+          type: result.types?.[0] || 'Point of Interest',
+          types: result.types || [], // Include all types for amenity generation
+          coordinates: {
+            lat: result.geometry?.location?.lat || 0,
+            lng: result.geometry?.location?.lng || 0
+          },
+          rating: result.rating || 0,
+          address: result.formatted_address || 'Unknown address',
+          phone: result.formatted_phone_number,
+          website: result.website,
+          photos: result.photos?.map((photo: any) => 
+            `${this.baseUrl}/photo?maxwidth=400&photoreference=${photo.photo_reference}&key=${this.apiKey}`
+          ),
+          openingHours: result.opening_hours?.open_now ? 'Open now' : 'Closed',
+          priceLevel: result.price_level,
+          userRatingsTotal: result.user_ratings_total,
+          reviews: result.reviews,
+          editorialSummary: result.editorial_summary?.overview
+        };
+        
+        console.log(`🎯 GooglePlacesService: Transformed place ${index}:`, {
+          id: place.id,
+          name: place.name,
+          photosCount: place.photos?.length || 0
+        });
+        
+        return place;
+      }) || [];
+      
+      console.log('🎯 GooglePlacesService: Final transformed places:', transformed.length);
+      return transformed;
     } catch (error) {
-      console.error('Error transforming places response:', error);
+      console.error('❌ Error transforming places response:', error);
       return [];
     }
   }
@@ -399,6 +457,13 @@ class GooglePlacesService {
   // Transform place details
   private transformPlaceDetails(result: any): GooglePlace | null {
     try {
+      console.log('🎯 GooglePlacesService: Raw API result:', {
+        name: result.name,
+        photosCount: result.photos?.length || 0,
+        reviewsCount: result.reviews?.length || 0,
+        editorialSummary: result.editorial_summary?.overview
+      });
+      
       // Transform opening hours to readable format
       const transformOpeningHours = (openingHours: any): string[] => {
         if (!openingHours || !openingHours.periods) return [];
@@ -412,7 +477,7 @@ class GooglePlacesService {
         });
       };
 
-      return {
+      const transformedPlace = {
         id: result.place_id || 'unknown',
         name: result.name || 'Unknown place',
         type: result.types?.[0] || 'Point of Interest',
@@ -434,6 +499,14 @@ class GooglePlacesService {
         reviews: result.reviews,
         editorialSummary: result.editorial_summary?.overview
       };
+      
+      console.log('🎯 GooglePlacesService: Transformed place:', {
+        photosCount: transformedPlace.photos?.length || 0,
+        reviewsCount: transformedPlace.reviews?.length || 0,
+        editorialSummary: transformedPlace.editorialSummary
+      });
+      
+      return transformedPlace;
     } catch (error) {
       console.error('Error transforming place details:', error);
       return null;

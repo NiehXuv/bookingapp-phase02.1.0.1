@@ -7,7 +7,7 @@ async function clearFavorites(req, res) {
 
     if (type) {
       // Clear specific type
-      const validTypes = ["hotels", "places", "tours"];
+      const validTypes = ["hotels", "places", "tours", "content"];
       if (!validTypes.includes(type)) {
         return res.status(400).json({ error: "Invalid favorite type" });
       }

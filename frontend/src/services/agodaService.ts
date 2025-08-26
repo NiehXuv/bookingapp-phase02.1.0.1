@@ -16,7 +16,7 @@ export interface AgodaHotel {
   website?: string;
   photos: string[];
   roomTypes: AgodaRoomType[];
-  policies: AgodaPolicy[];
+  policies: AgodaPolicy;
   highlights: string[];
   cancellationPolicy: string;
   lastUpdated: string;

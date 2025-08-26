@@ -7,6 +7,7 @@ import { contentService } from '../services/contentService';
 import { transformMockToContent, formatEngagement } from '../utils/contentTransformer';
 import { ContentItem } from '../types/content';
 import { useContentContext } from '../context/ContentContext';
+import savedContentService from '../services/savedContentService';
 
 const { width } = Dimensions.get('window');
 
@@ -36,7 +37,7 @@ const masonryData = [
 const tabs = ['For you', 'Popular', 'New', 'Near me', 'Beach'];
 
 const HomeScreen: React.FC = () => {
-	const { user } = useAuth();
+	const { user, token } = useAuth();
 	const navigation = useNavigation();
 	const { setContentPool, addToContentPool } = useContentContext();
 	const [activeTab, setActiveTab] = useState('For you');
@@ -52,6 +53,54 @@ const HomeScreen: React.FC = () => {
 	// Track seen content IDs to prevent duplicates
 	const [seenContentIds, setSeenContentIds] = useState<Set<string>>(new Set());
 	
+	// Fetch saved content IDs
+	const fetchSavedContentIds = async () => {
+		if (!token) return;
+		
+		try {
+			const response = await savedContentService.getSavedContent(token);
+			if (response.success && response.favorites?.content) {
+				const savedIds = new Set(response.favorites.content.map(item => item.id));
+				setSavedContentIds(savedIds);
+			}
+		} catch (error) {
+			console.error('Error fetching saved content IDs:', error);
+		}
+	};
+	
+	// Handle saving content
+	const handleSaveContent = async (content: ContentItem) => {
+		if (!token) {
+			Alert.alert('Error', 'Please log in to save content');
+			return;
+		}
+		
+		try {
+			const isSaved = savedContentIds.has(content.id);
+			
+			if (isSaved) {
+				// Remove from saved
+				await savedContentService.removeSavedContent(content.id, token);
+				setSavedContentIds(prev => {
+					const newSet = new Set(prev);
+					newSet.delete(content.id);
+					return newSet;
+				});
+				// Show toast-like feedback instead of alert
+				console.log('Content removed from saved');
+			} else {
+				// Add to saved
+				await savedContentService.saveContent(content, token);
+				setSavedContentIds(prev => new Set(prev).add(content.id));
+				// Show toast-like feedback instead of alert
+				console.log('Content saved successfully');
+			}
+		} catch (error) {
+			console.error('Error saving/removing content:', error);
+			Alert.alert('Error', 'Failed to save content. Please try again.');
+		}
+	};
+	
 	// Infinite scroll and bottom tracking
 	const [isLoadingMore, setIsLoadingMore] = useState(false);
 	const [hasMoreContent, setHasMoreContent] = useState(true);
@@ -62,8 +111,18 @@ const HomeScreen: React.FC = () => {
 	
 	// Scroll position tracking for infinite scroll
 	const scrollViewRef = useRef<ScrollView>(null);
+	
+	// Saved content tracking
+	const [savedContentIds, setSavedContentIds] = useState<Set<string>>(new Set());
   
 
+	// Fetch saved content IDs
+	useEffect(() => {
+		if (token) {
+			fetchSavedContentIds();
+		}
+	}, [token]);
+	
 	// Fetch content from multiple sources using contentService
 	const fetchContent = async (refresh = false) => {
 		if (refresh) {
@@ -642,7 +701,7 @@ const HomeScreen: React.FC = () => {
 				<TouchableOpacity style={styles.searchBar} activeOpacity={0.9} onPress={() => (navigation as any).navigate('UniversalSearch')}>
 					<TextInput
 						style={styles.searchInput}
-						placeholder="Tìm kiếm điểm đến"
+						placeholder="Search for content, stay, tour and transport"
 						placeholderTextColor="#9CA3AF"
 						editable={false}
 						pointerEvents="none"
@@ -726,7 +785,7 @@ const HomeScreen: React.FC = () => {
 					<View style={styles.masonryRow}>
 						<View style={styles.column}>
 							{content.filter((_, i) => i % 2 === 0).map((item, idx) => (
-								<View key={`${item.id}_${idx}`} style={styles.tile}>
+								<View key={`col0_${item.id}_${idx}`} style={styles.tile}>
 									<TouchableOpacity onPress={() => openDetailScreen(item)}>
 										<View style={[styles.card, idx % 2 === 0 ? styles.cardTall : styles.cardShort]}>
 											<Image source={{ uri: item.imageUrl }} style={styles.cardImage} resizeMode="cover" />
@@ -756,16 +815,28 @@ const HomeScreen: React.FC = () => {
 									</TouchableOpacity>
 									<View style={styles.metaRow}>
 										<Text style={styles.metaTitle} numberOfLines={1}>{item.metaTitle || item.title}</Text>
-										<TouchableOpacity style={styles.optionsBtn} onPress={() => openOptions(item)}>
-											<MoreHorizontal size={18} color="#111827" />
-										</TouchableOpacity>
+										<View style={styles.metaActions}>
+											<TouchableOpacity 
+												style={[styles.saveButton, savedContentIds.has(item.id) && styles.savedButton]} 
+												onPress={() => handleSaveContent(item)}
+											>
+												<Heart 
+													size={16} 
+													color={savedContentIds.has(item.id) ? "#FF6B9D" : "#666"} 
+													fill={savedContentIds.has(item.id) ? "#FF6B9D" : "none"} 
+												/>
+											</TouchableOpacity>
+											<TouchableOpacity style={styles.optionsBtn} onPress={() => openOptions(item)}>
+												<MoreHorizontal size={18} color="#111827" />
+											</TouchableOpacity>
+										</View>
 									</View>
 								</View>
 							))}
 						</View>
 						<View style={styles.column}>
 							{content.filter((_, i) => i % 2 !== 0).map((item, idx) => (
-								<View key={`${item.id}_${idx}`} style={styles.tile}>
+								<View key={`col1_${item.id}_${idx}`} style={styles.tile}>
 									<TouchableOpacity onPress={() => openDetailScreen(item)}>
 										<View style={[styles.card, idx % 2 === 1 ? styles.cardTall : styles.cardShort]}>
 											<Image source={{ uri: item.imageUrl }} style={styles.cardImage} resizeMode="cover" />
@@ -795,9 +866,21 @@ const HomeScreen: React.FC = () => {
 									</TouchableOpacity>
 									<View style={styles.metaRow}>
 										<Text style={styles.metaTitle} numberOfLines={1}>{item.metaTitle || item.title}</Text>
-										<TouchableOpacity style={styles.optionsBtn} onPress={() => openOptions(item)}>
-											<MoreHorizontal size={18} color="#111827" />
-										</TouchableOpacity>
+										<View style={styles.metaActions}>
+											<TouchableOpacity 
+												style={[styles.saveButton, savedContentIds.has(item.id) && styles.savedButton]} 
+												onPress={() => handleSaveContent(item)}
+											>
+												<Heart 
+													size={16} 
+													color={savedContentIds.has(item.id) ? "#FF6B9D" : "#666"} 
+													fill={savedContentIds.has(item.id) ? "#FF6B9D" : "none"} 
+												/>
+											</TouchableOpacity>
+											<TouchableOpacity style={styles.optionsBtn} onPress={() => openOptions(item)}>
+												<MoreHorizontal size={18} color="#111827" />
+											</TouchableOpacity>
+										</View>
 									</View>
 								</View>
 							))}
@@ -907,10 +990,14 @@ const styles = StyleSheet.create({
 		fontWeight: '600',
 	},
 	tabTextActive: {
-		color: '#111827',
-		fontSize: 18,
+		color: '#fff',
+		fontSize: 16,
 		fontWeight: '800',
-		textDecorationLine: 'underline',
+		backgroundColor: '#FF6B9D',
+		paddingHorizontal: 16,
+		paddingVertical: 8,
+		borderRadius: 20,
+		overflow: 'hidden',
 	},
 	masonryRow: {
 		flexDirection: 'row',
@@ -978,6 +1065,21 @@ const styles = StyleSheet.create({
 		fontWeight: '600',
 		color: '#111827',
 		marginRight: 8,
+	},
+	metaActions: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 8,
+	},
+	saveButton: {
+		alignItems: 'center',
+		justifyContent: 'center',
+		padding: 6,
+		borderRadius: 16,
+		backgroundColor: '#f8f8f8',
+	},
+	savedButton: {
+		backgroundColor: '#fff0f5',
 	},
 	optionsBtn: {
 		alignItems: 'center',

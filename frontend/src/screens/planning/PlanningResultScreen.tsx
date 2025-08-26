@@ -6,6 +6,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { GeneratedTripPlan } from '../../services/geminiService';
 import { googlePlacesService, GooglePlace } from '../../services/googlePlacesService';
+import { getBackendBaseUrl } from '../../config/apiConfig';
 
 const { width, height } = Dimensions.get('window');
 
@@ -241,9 +242,7 @@ const PlanningResultScreen: React.FC = () => {
     }
   };
 
-  const getBackendBaseUrl = (): string => {
-    return 'http://192.168.0.100:5000';
-  };
+
 
   const handleActivityPress = (activity: EnhancedActivity) => {
     if (activity.placeDetails && activity.placeDetails.id && !activity.placeDetails.id.startsWith('fallback-') && !activity.placeDetails.id.startsWith('no-results-')) {

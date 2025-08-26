@@ -218,7 +218,7 @@ class TripAdvisorService {
         isShort: false,
         source: 'TripAdvisor Location',
         locationString: `${location}, Vietnam`,
-        rating: (Math.random() * 2 + 3.5).toFixed(1), // 3.5 to 5.5
+        rating: Number((Math.random() * 2 + 3.5).toFixed(1)), // 3.5 to 5.5
         reviewCount: Math.floor(Math.random() * 1000) + 50
       });
     }

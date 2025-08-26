@@ -15,7 +15,7 @@ async function createNotification(req, res) {
     }
 
     // Validate notification type
-    const validTypes = ["booking", "reminder", "promotion", "system"];
+    const validTypes = ["booking", "reminder", "promotion", "system", "chat"];
     if (!validTypes.includes(type)) {
       return res.status(400).json({ error: "Invalid notification type" });
     }
@@ -26,15 +26,19 @@ async function createNotification(req, res) {
       type,
       read: false,
       createdAt: Date.now(),
-      data: data || {}
+      expiresAt: type === "promotion" ? Date.now() + (7 * 24 * 60 * 60 * 1000) : null, // 7 days for promotions
+      data: {
+        ...data,
+        priority: data?.priority || "normal"
+      }
     };
 
     // Create new notification with auto-generated ID
-    const notificationsRef = `Users/${uid}`/notifications;
+    const notificationsRef = `Users/${uid}/notifications`;
     const newNotificationRef = push(notificationsRef);
     const notificationId = newNotificationRef.key;
 
-    await set(`notifications/${notificationId}`, notificationData);
+    await set(`${notificationsRef}/${notificationId}`, notificationData);
 
     res.status(201).json({
       message: "Notification created successfully",

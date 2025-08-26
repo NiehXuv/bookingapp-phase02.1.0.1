@@ -1,12 +1,12 @@
-const { database, get } = require("../../config/firebaseconfig.js");
+const { database, get, ref } = require("../../config/firebaseconfig.js");
 
 async function getAllBookings(req, res) {
   try {
     const { uid } = req.user; // From JWT token
     const { type, status } = req.query; // Optional filters
 
-    const bookingsRef = `Users/${uid}`/bookings;
-    const snapshot = await get(bookingsRef);
+    const bookingsRef = `Users/${uid}/bookings`;
+    const snapshot = await get(ref(database, bookingsRef));
 
     if (!snapshot.exists()) {
       return res.status(200).json({
