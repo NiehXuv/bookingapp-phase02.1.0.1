@@ -20,6 +20,14 @@ interface ContentContextType {
   // Content pool management
   addToContentPool: (content: ContentItem[]) => void;
   clearContentPool: () => void;
+  
+  // ContentScreen state persistence
+  contentScreenData: {
+    content: ContentItem[];
+    activeTab: string;
+    seenContentIds: string[]; // Store as array since Set can't be serialized
+  } | null;
+  setContentScreenData: (data: { content: ContentItem[]; activeTab: string; seenContentIds: string[] } | null) => void;
 }
 
 const ContentContext = createContext<ContentContextType | undefined>(undefined);
@@ -39,6 +47,11 @@ interface ContentProviderProps {
 export const ContentProvider: React.FC<ContentProviderProps> = ({ children }) => {
   const [contentPool, setContentPool] = useState<ContentItem[]>([]);
   const [relatedContentCache, setRelatedContentCache] = useState<Map<string, ContentItem[]>>(new Map());
+  const [contentScreenData, setContentScreenData] = useState<{
+    content: ContentItem[];
+    activeTab: string;
+    seenContentIds: string[]; // Store as array since Set can't be serialized
+  } | null>(null);
 
   // Cache related content for an item
   const cacheRelatedContent = (itemId: string, relatedItems: ContentItem[]) => {
@@ -164,6 +177,8 @@ export const ContentProvider: React.FC<ContentProviderProps> = ({ children }) =>
     getRelatedContent,
     addToContentPool,
     clearContentPool,
+    contentScreenData,
+    setContentScreenData,
   };
 
   return (

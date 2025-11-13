@@ -4,7 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 // Import screens
-import HomeScreen from '../screens/HomeScreen';
+import HomeScreen from '../screens/ContentScreen';
 import ExploreScreen from '../screens/ExploreScreen';
 import ReelsScreen from '../screens/PlanScreen';
 import ProfileScreen from '../screens/ProfileScreen';

@@ -32,7 +32,7 @@ class TripPlanService {
   async getAllTripPlans(): Promise<TripPlansResponse> {
     try {
       const headers = await this.getAuthHeaders();
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/trip-plans`, {
+      const response = await fetch(`${API_CONFIG.BACKEND.BASE_URL}/api/trip-plans`, {
         method: 'GET',
         headers,
       });
@@ -52,7 +52,7 @@ class TripPlanService {
   async getTripPlan(planId: string): Promise<TripPlan> {
     try {
       const headers = await this.getAuthHeaders();
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/trip-plans/${planId}`, {
+      const response = await fetch(`${API_CONFIG.BACKEND.BASE_URL}/api/trip-plans/${planId}`, {
         method: 'GET',
         headers,
       });
@@ -72,7 +72,7 @@ class TripPlanService {
   async createTripPlan(tripPlanData: Partial<TripPlan>): Promise<TripPlan> {
     try {
       const headers = await this.getAuthHeaders();
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/trip-plans`, {
+      const response = await fetch(`${API_CONFIG.BACKEND.BASE_URL}/api/trip-plans`, {
         method: 'POST',
         headers,
         body: JSON.stringify(tripPlanData),
@@ -93,7 +93,7 @@ class TripPlanService {
   async updateTripPlan(planId: string, tripPlanData: Partial<TripPlan>): Promise<TripPlan> {
     try {
       const headers = await this.getAuthHeaders();
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/trip-plans/${planId}`, {
+      const response = await fetch(`${API_CONFIG.BACKEND.BASE_URL}/api/trip-plans/${planId}`, {
         method: 'PUT',
         headers,
         body: JSON.stringify(tripPlanData),
@@ -114,7 +114,7 @@ class TripPlanService {
   async deleteTripPlan(planId: string): Promise<void> {
     try {
       const headers = await this.getAuthHeaders();
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/trip-plans/${planId}`, {
+      const response = await fetch(`${API_CONFIG.BACKEND.BASE_URL}/api/trip-plans/${planId}`, {
         method: 'DELETE',
         headers,
       });

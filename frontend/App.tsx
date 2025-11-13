@@ -10,6 +10,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import LoginScreen from './src/screens/LoginScreen';
 import SignUpScreen from './src/screens/SignUpScreen';
 import HomeScreen from './src/screens/HomeScreen';
+import ContentScreen from './src/screens/ContentScreen';
 // import other screens as needed
 import CustomTabBar from './src/components/CustomTabBar';
 import ChatbotWrapper from './src/components/ChatbotWrapper';
@@ -32,6 +33,20 @@ import PlanManualScreen from './src/screens/planning/PlanManualScreen';
 import ExploreScreen from './src/screens/ExploreScreen';
 import BookingScreen from './src/screens/BookingScreen';
 import UserProfileScreen from './src/screens/UserProfileScreen';
+import StampCollectionScreen from './src/screens/stamp/StampCollectionScreen';
+import StampDetailScreen from './src/screens/stamp/StampDetailScreen';
+
+// Reward Screens
+import RewardHubScreen from './src/screens/reward/RewardHubScreen';
+import RewardHistoryScreen from './src/screens/reward/RewardHistoryScreen';
+import ExploreRewardScreen from './src/screens/reward/ExploreRewardScreen';
+import YourRewardScreen from './src/screens/reward/YourRewardScreen';
+import MissionDetailsScreen from './src/screens/reward/MissionDetailsScreen';
+
+// Feed Screens
+import FeedScreen from './src/screens/Feed/FeedScreen';
+import UserScreen from './src/screens/Feed/UserScreen';
+import PostDetailScreen from './src/screens/Feed/PostDetailScreen';
 
 // Chat Screens
 import { UserSearchScreen, AddFriendScreen, ChatScreen } from './src/screens/chat';
@@ -73,6 +88,7 @@ function RootNavigator() {
         ) : (
           <>
             <Stack.Screen name="Main" component={MainTabs} />
+            <Stack.Screen name="ContentScreen" component={ContentScreen} />
             <Stack.Screen name="UniversalSearch" component={UniversalSearchScreen} />
             <Stack.Screen name="SearchContentResult" component={SearchContentResultScreen} />
             <Stack.Screen name="SearchHotelResult" component={SearchHotelResultScreen} />
@@ -114,6 +130,22 @@ function RootNavigator() {
             <Stack.Screen name="UserSearchScreen" component={UserSearchScreen} />
             <Stack.Screen name="AddFriendScreen" component={AddFriendScreen} />
             <Stack.Screen name="ChatScreen" component={ChatScreen} />
+            
+            {/* Stamp Collection Screen */}
+            <Stack.Screen name="StampCollectionScreen" component={StampCollectionScreen} />
+            <Stack.Screen name="StampDetailScreen" component={StampDetailScreen} />
+            
+            {/* Reward Screens */}
+            <Stack.Screen name="RewardHub" component={RewardHubScreen} />
+            <Stack.Screen name="RewardHistory" component={RewardHistoryScreen} />
+            <Stack.Screen name="ExploreReward" component={ExploreRewardScreen} />
+            <Stack.Screen name="YourReward" component={YourRewardScreen} />
+            <Stack.Screen name="MissionDetails" component={MissionDetailsScreen} />
+            
+            {/* Feed Screens */}
+            <Stack.Screen name="FeedScreen" component={FeedScreen} />
+            <Stack.Screen name="UserScreen" component={UserScreen} />
+            <Stack.Screen name="PostDetailScreen" component={PostDetailScreen} />
           </>
         )}
       </Stack.Navigator>

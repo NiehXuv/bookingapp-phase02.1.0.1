@@ -7,7 +7,7 @@ class GeminiService {
       throw new Error('GEMINI_API_KEY is required in environment variables');
     }
     
-    this.baseURL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+    this.baseURL = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent';
   }
 
   async generateTravelPlan(planningData) {

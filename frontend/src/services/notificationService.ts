@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from './authService';
+import { getApiBaseUrl } from '../config/apiConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE_URL = getApiBaseUrl();

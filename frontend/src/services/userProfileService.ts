@@ -1,4 +1,6 @@
-const API_BASE_URL = 'http://192.168.1.88:5000/api';
+import { getApiBaseUrl } from '../config/apiConfig';
+
+const API_BASE_URL = getApiBaseUrl();
 
 export interface UserProfile {
   username: string;
