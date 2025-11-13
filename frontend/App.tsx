@@ -35,6 +35,11 @@ import BookingScreen from './src/screens/BookingScreen';
 import UserProfileScreen from './src/screens/UserProfileScreen';
 import StampCollectionScreen from './src/screens/stamp/StampCollectionScreen';
 import StampDetailScreen from './src/screens/stamp/StampDetailScreen';
+import PromotionScreen from './src/screens/promotion/PromotionScreen';
+import PromotionDetailScreen from './src/screens/promotion/PromotionDetailScreen';
+import MembershipScreen from './src/screens/membership/MembershipScreen';
+import MembershipDetailScreen from './src/screens/membership/MembershipDetailScreen';
+import MembershipBenefitsScreen from './src/screens/membership/MembershipBenefitsScreen';
 
 // Reward Screens
 import RewardHubScreen from './src/screens/reward/RewardHubScreen';
@@ -134,6 +139,15 @@ function RootNavigator() {
             {/* Stamp Collection Screen */}
             <Stack.Screen name="StampCollectionScreen" component={StampCollectionScreen} />
             <Stack.Screen name="StampDetailScreen" component={StampDetailScreen} />
+            
+            {/* Promotion Screens */}
+            <Stack.Screen name="PromotionScreen" component={PromotionScreen} />
+            <Stack.Screen name="PromotionDetailScreen" component={PromotionDetailScreen} />
+            
+            {/* Membership Screens */}
+            <Stack.Screen name="MembershipScreen" component={MembershipScreen} />
+            <Stack.Screen name="MembershipDetailScreen" component={MembershipDetailScreen} />
+            <Stack.Screen name="MembershipBenefitsScreen" component={MembershipBenefitsScreen} />
             
             {/* Reward Screens */}
             <Stack.Screen name="RewardHub" component={RewardHubScreen} />

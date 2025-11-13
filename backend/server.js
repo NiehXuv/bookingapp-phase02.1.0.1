@@ -38,6 +38,7 @@ app.use('/api/user-profile', require('./routes/userProfile'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/chat', require('./routes/chat'));
 app.use('/api/friends', require('./routes/friends'));
+app.use('/api/posts', require('./routes/posts'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

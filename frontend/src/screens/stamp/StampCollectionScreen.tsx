@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Image, ScrollView, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, Image, ScrollView, StyleSheet, Dimensions, ImageBackground } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { ArrowLeft, MapPin, Utensils, Activity } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
+// Stamp dimensions: 304x220 pixels (aspect ratio: 1.382)
+const STAMP_ASPECT_RATIO = 304 / 220; // 1.382
 const STAMP_WIDTH = (width - 48) / 2; // 16 padding on each side + 16 gap between stamps
+const STAMP_HEIGHT = STAMP_WIDTH / STAMP_ASPECT_RATIO; // Maintain stamp aspect ratio
 
 interface Stamp {
 	id: string;
@@ -119,9 +122,14 @@ const StampCollectionScreen = () => {
 	};
 
 	return (
-		<View style={styles.container}>
-			{/* Header */}
-			<View style={styles.header}>
+		<ImageBackground 
+			source={require('../../../assets/background.png')} 
+			style={styles.backgroundImage}
+			resizeMode="cover"
+		>
+			<View style={styles.container}>
+				{/* Header */}
+				<View style={styles.header}>
 				<TouchableOpacity 
 					onPress={() => navigation.goBack()} 
 					style={styles.backButton}
@@ -204,14 +212,19 @@ const StampCollectionScreen = () => {
 				<MapPin size={20} color="#FFFFFF" />
 				<Text style={styles.mapViewText}>Map View</Text>
 			</TouchableOpacity>
-		</View>
+			</View>
+		</ImageBackground>
 	);
 };
 
 const styles = StyleSheet.create({
+	backgroundImage: {
+		flex: 1,
+		width: '100%',
+		height: '100%',
+	},
 	container: {
 		flex: 1,
-		backgroundColor: '#F3F4F6',
 		paddingTop: 50,
 	},
 	header: {
@@ -273,6 +286,7 @@ const styles = StyleSheet.create({
 	},
 	stampCard: {
 		width: STAMP_WIDTH,
+		height: STAMP_HEIGHT + 60, // Image height + info section
 		backgroundColor: '#FFFFFF',
 		borderRadius: 16,
 		overflow: 'hidden',
@@ -285,7 +299,7 @@ const styles = StyleSheet.create({
 	},
 	stampImage: {
 		width: '100%',
-		height: STAMP_WIDTH * 0.8,
+		height: STAMP_HEIGHT,
 	},
 	stampOverlay: {
 		position: 'absolute',

@@ -15,7 +15,9 @@ import {
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EnhancedPlace } from '../types/explore';
-import { EnhancedPlaceService } from '../services/enhancedPlaceService';
+// API service commented out due to billing issues - using mock data instead
+// import { EnhancedPlaceService } from '../services/enhancedPlaceService';
+import { getMockEnhancedPlace } from '../mockdata/mockEnhancedPlaces';
 import ChatbotWrapper from '../components/ChatbotWrapper';
 
 const { width: sw, height: sh } = Dimensions.get('window');
@@ -48,32 +50,32 @@ const PlaceDetailScreen: React.FC<PlaceDetailScreenProps> = ({ route, navigation
   const loadPlaceDetails = async () => {
     try {
       setIsLoading(true);
-      const placeService = new EnhancedPlaceService();
       
-      // Debug: Log what we received
-      console.log('🎯 PlaceDetailScreen: Received route params:', { placeId, placeData, coordinates });
-      
+      // Using mock data instead of API calls (API billing issues)
+      // TODO: Re-enable API calls when billing is resolved
+      // const placeService = new EnhancedPlaceService();
+      // let details: EnhancedPlace;
+      // if (placeData) {
+      //   details = await placeService.getTourDetails(placeData, coordinates);
+      // } else {
+      //   details = await placeService.getPlaceDetails(placeId, coordinates);
+      // }
+
+      // Use mock data directly
+      // If placeData is provided (from tour), merge it with mock data
       let details: EnhancedPlace;
-      
-      // Check if we have placeData (tour data) or need to fetch from API
-      if (placeData) {
-        console.log('🎯 PlaceDetailScreen: Using provided place data with photos:', placeData.photos?.length || 0);
-        console.log('🎯 PlaceDetailScreen: Using provided place data with reviews:', placeData.reviews?.length || 0);
-        console.log('🎯 PlaceDetailScreen: Using provided place data with description:', placeData.editorialSummary || placeData.description);
-        try {
-          details = await placeService.getTourDetails(placeData, coordinates);
-        } catch (error) {
-          console.log('Falling back to mock data for tour:', error);
-          details = await placeService.getMockPlaceDetails(placeId);
-        }
+      if (placeData && placeData.photos && placeData.photos.length > 0) {
+        // Use provided data but enhance with mock data structure
+        const mockBase = getMockEnhancedPlace(placeId, coordinates);
+        details = {
+          ...mockBase,
+          photos: placeData.photos, // Use provided photos
+          name: placeData.name || mockBase.name,
+          description: placeData.editorialSummary || placeData.description || mockBase.description,
+          rating: placeData.rating || mockBase.rating
+        };
       } else {
-        console.log('🎯 PlaceDetailScreen: Fetching place details from API');
-        try {
-          details = await placeService.getPlaceDetails(placeId, coordinates);
-        } catch (error) {
-          console.log('Falling back to mock data for place:', error);
-          details = await placeService.getMockPlaceDetails(placeId);
-        }
+        details = getMockEnhancedPlace(placeId, coordinates);
       }
       
       console.log('🎯 PlaceDetailScreen: Final enhanced place data:', {
@@ -111,13 +113,16 @@ const PlaceDetailScreen: React.FC<PlaceDetailScreenProps> = ({ route, navigation
   };
 
   const renderPhotoCarousel = () => {
+    const defaultImage = 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800';
+    
     if (!enhancedPlace?.photos || enhancedPlace.photos.length === 0) {
       return (
         <View style={styles.heroImageContainer}>
           <Image 
-            source={{ uri: 'https://via.placeholder.com/400x300/4F46E5/FFFFFF?text=No+Photos+Available' }} 
+            source={{ uri: defaultImage }} 
             style={styles.heroImage} 
             resizeMode="cover"
+            onError={() => console.log('Failed to load default image')}
           />
         </View>
       );
@@ -127,14 +132,20 @@ const PlaceDetailScreen: React.FC<PlaceDetailScreenProps> = ({ route, navigation
       <View style={styles.heroImageContainer}>
         <FlatList
           data={enhancedPlace?.photos || []}
-          renderItem={({ item, index }) => (
-            <Image 
-              source={{ uri: item }} 
-              style={styles.heroImage} 
-              resizeMode="cover"
-            />
-          )}
-          keyExtractor={(item, index) => index.toString()}
+          renderItem={({ item, index }) => {
+            const imageUri = item || defaultImage;
+            return (
+              <Image 
+                source={{ uri: imageUri }} 
+                style={styles.heroImage} 
+                resizeMode="cover"
+                onError={(error) => {
+                  console.log('Failed to load image:', imageUri, error);
+                }}
+              />
+            );
+          }}
+          keyExtractor={(item, index) => `photo_${index}_${item}`}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
@@ -144,14 +155,20 @@ const PlaceDetailScreen: React.FC<PlaceDetailScreenProps> = ({ route, navigation
           }}
         />
         
-        {/* Photo Counter */}
-        <View style={styles.photoCounter}>
-          <Text style={styles.photoCounterText}>
-            {enhancedPlace?.photos?.map((_, index) => (
-              <Text key={index} style={styles.photoDot}>•</Text>
-            )) || null}
-          </Text>
-        </View>
+        {/* Photo Indicators */}
+        {enhancedPlace?.photos && enhancedPlace.photos.length > 1 && (
+          <View style={styles.photoIndicators}>
+            {enhancedPlace.photos.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.photoIndicator,
+                  index === currentPhotoIndex && styles.photoIndicatorActive
+                ]}
+              />
+            ))}
+          </View>
+        )}
       </View>
     );
   };
@@ -229,6 +246,17 @@ const PlaceDetailScreen: React.FC<PlaceDetailScreenProps> = ({ route, navigation
   
   return (
     <View style={styles.container}>
+      {/* Back Button */}
+      <TouchableOpacity 
+        style={styles.backButton}
+        onPress={() => navigation.goBack()}
+        activeOpacity={0.7}
+      >
+        <View style={styles.backButtonContainer}>
+          <MaterialIcons name="arrow-back" size={24} color="#fff" />
+        </View>
+      </TouchableOpacity>
+
       {/* Hero Image Section */}
       {renderPhotoCarousel()}
       
@@ -237,20 +265,27 @@ const PlaceDetailScreen: React.FC<PlaceDetailScreenProps> = ({ route, navigation
         {/* Place Header */}
         <View style={styles.placeHeader}>
           <Text style={styles.placeName}>{enhancedPlace?.name || 'Unknown Place'}</Text>
-          <Text style={styles.placeType}>{enhancedPlace?.type || 'Place'}</Text>
-          <View style={styles.placeLocation}>
-            <Text style={styles.placeAddress}>{enhancedPlace?.address || 'Address not available'}</Text>
-            <TouchableOpacity onPress={getDirections}>
-              <View style={styles.viewMapIcon}><Text style={styles.viewMapText}>View Map</Text></View>
+          
+          {/* Address with View Map Button */}
+          <View style={styles.placeLocationRow}>
+            <Text style={styles.placeAddress} numberOfLines={2}>{enhancedPlace?.address || 'Address not available'}</Text>
+            <TouchableOpacity onPress={getDirections} activeOpacity={0.7}>
+              <View style={styles.viewMapButton}>
+                <Text style={styles.viewMapText}>View Map</Text>
+              </View>
             </TouchableOpacity>
           </View>
           
+          {/* Rating */}
           <View style={styles.ratingSection}>
-            <MaterialIcons name="star" size={sw * 0.05} color="#EC4899" />
+            <MaterialIcons name="star" size={20} color="#EC4899" />
             <Text style={styles.ratingText}>{enhancedPlace?.rating || 0}</Text>
           </View>
           
-          <Text style={styles.priceText}>from VND {enhancedPlace?.tourOptions?.[0]?.price ? enhancedPlace.tourOptions[0].price.toLocaleString() : '500,000'}/person</Text>
+          {/* Price */}
+          <Text style={styles.priceText}>
+            from VND {enhancedPlace?.tourOptions?.[0]?.price ? enhancedPlace.tourOptions[0].price.toLocaleString() : '500,000'}/person
+          </Text>
         </View>
         
         {/* About Section */}
@@ -304,8 +339,8 @@ const PlaceDetailScreen: React.FC<PlaceDetailScreenProps> = ({ route, navigation
                   <View key={index} style={styles.amenityPill}>
                     <MaterialIcons 
                       name={getAmenityIcon(amenity) as any} 
-                      size={sw * 0.04} 
-                      color="#10B981" 
+                      size={18} 
+                      color="#3B82F6" 
                     />
                     <Text style={styles.amenityPillText}>{amenity}</Text>
                   </View>
@@ -421,8 +456,17 @@ const PlaceDetailScreen: React.FC<PlaceDetailScreenProps> = ({ route, navigation
               });
             }
           }}
+          activeOpacity={0.8}
         >
-            <Text style={styles.bookNowButtonText}>Book Now</Text>      
+          <LinearGradient
+            colors={['#FF6B9D', '#FF8E53']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.bookNowGradient}
+          >
+            <MaterialIcons name="event" size={22} color="white" />
+            <Text style={styles.bookNowButtonText}>Book Now</Text>
+          </LinearGradient>
         </TouchableOpacity>
       </View>
 
@@ -436,6 +480,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    zIndex: 10,
+  },
+  backButtonContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
   loadingContainer: {
     flex: 1,
@@ -476,34 +539,35 @@ const styles = StyleSheet.create({
   },
   heroImageContainer: {
     width: '100%',
-    height: sh * 0.35, // 40% of screen height
+    height: sh * 0.4,
     position: 'relative',
+    backgroundColor: '#E5E7EB',
   },
   heroImage: {
-    width: sw, // Full screen width
-    height: sh * 0.35,
+    width: sw,
+    height: sh * 0.4,
   },
   photoIndicators: {
     flexDirection: 'row',
     position: 'absolute',
-    bottom: sh * 0.03,
+    bottom: 16,
     left: 0,
     right: 0,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 6,
   },
   photoIndicator: {
-    width: sw * 0.02,
-    height: sw * 0.02,
-    borderRadius: sw * 0.01,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: 'rgba(255,255,255,0.5)',
-    marginHorizontal: sw * 0.01,
   },
   photoIndicatorActive: {
     backgroundColor: 'white',
-    width: sw * 0.03,
-    height: sw * 0.03,
-    borderRadius: sw * 0.015,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   placeholderPhoto: {
     width: '100%',
@@ -520,125 +584,118 @@ const styles = StyleSheet.create({
   contentCard: {
     flex: 1,
     backgroundColor: 'white',
-    borderTopLeftRadius: sw * 0.06,
-    borderTopRightRadius: sw * 0.06,
-    marginTop: -sh * 0.02, // Overlap with hero image
-    paddingHorizontal: sw * 0.05,
-    paddingTop: sh * 0.025,
+    marginTop: -sh * 0.03,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 10,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 8,
   },
   placeHeader: {
-    marginBottom: sh * 0.025,
+    padding: 20,
+    paddingTop: 24,
   },
   placeName: {
-    fontSize: sw * 0.08,
+    fontSize: 28,
     fontWeight: '800',
     color: '#111827',
-    marginBottom: sh * 0.006,
+    marginBottom: 12,
+    lineHeight: 34,
   },
-  placeType: {
-    fontSize: sw * 0.045,
-    color: '#6B7280',
-    marginBottom: sh * 0.01,
-    textTransform: 'capitalize',
-  },
-  placeLocation: {
+  placeLocationRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: sh * 0.01,
+    alignItems: 'flex-start',
+    marginBottom: 16,
+    gap: 12,
   },
   placeAddress: {
-    fontSize: sw * 0.035,
+    fontSize: 15,
     color: '#6B7280',
-    marginRight: sw * 0.025,
     flex: 1,
+    lineHeight: 20,
+  },
+  viewMapButton: {
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    minWidth: 100,
   },
   viewMapText: {
-    fontSize: sw * 0.035,
+    fontSize: 14,
     color: '#3B82F6',
     fontWeight: '600',
-  },
-  viewMapIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E0F2FE',
-    paddingHorizontal: sw * 0.025,
-    paddingVertical: sh * 0.008,
-    borderRadius: sw * 0.04,
-    marginBottom: sh * 0.015,
-    marginRight: sw * 0.015,
-    minWidth: sw * 0.2,
   },
   ratingSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: sh * 0.01,
+    marginBottom: 12,
+    gap: 6,
   },
   ratingText: {
-    fontSize: sw * 0.04,
-    color: '#6B7280',
-    marginLeft: sw * 0.01,
+    fontSize: 16,
+    color: '#111827',
+    fontWeight: '600',
   },
   priceText: {
-    fontSize: sw * 0.06,
+    fontSize: 22,
     fontWeight: '700',
     color: '#10B981',
-    marginTop: sh * 0.01,
+    marginTop: 4,
   },
   aboutSection: {
-    marginBottom: sh * 0.025,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
   },
   sectionTitle: {
-    fontSize: sw * 0.05,
+    fontSize: 20,
     fontWeight: '700',
     color: '#111827',
-    marginBottom: sh * 0.02,
+    marginBottom: 16,
   },
   aboutText: {
-    fontSize: sw * 0.035,
+    fontSize: 15,
     color: '#6B7280',
-    lineHeight: sh * 0.03,
+    lineHeight: 24,
   },
   amenitiesSection: {
-    marginBottom: sh * 0.025,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
   },
   amenitiesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginTop: sh * 0.01,
+    gap: 10,
   },
   amenityPill: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#E0F2FE',
-    paddingHorizontal: sw * 0.025,
-    paddingVertical: sh * 0.008,
-    borderRadius: sw * 0.04,
-    marginBottom: sh * 0.015,
-    marginRight: sw * 0.015,
-    minWidth: sw * 0.2,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 8,
   },
   amenityPillText: {
-    fontSize: sw * 0.03,
-    color: '#10B981',
+    fontSize: 14,
+    color: '#3B82F6',
     fontWeight: '600',
-    marginLeft: sw * 0.01,
   },
   hoursSection: {
-    marginBottom: sh * 0.025,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
   },
   hourText: {
-    fontSize: sw * 0.035,
+    fontSize: 15,
     color: '#6B7280',
-    marginBottom: sh * 0.01,
+    marginBottom: 8,
+    lineHeight: 22,
   },
   toursSection: {
-    marginBottom: sh * 0.025,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
   },
   toursGrid: {
     flexDirection: 'row',
@@ -646,21 +703,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   tourCard: {
-    width: '48%', // Two columns
+    width: '48%',
     backgroundColor: '#F9FAFB',
-    borderRadius: sw * 0.03,
+    borderRadius: 16,
     overflow: 'hidden',
-    marginBottom: sh * 0.015,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
   selectedTourCard: {
     borderColor: '#3B82F6',
     backgroundColor: '#EFF6FF',
+    borderWidth: 2,
   },
   tourImageContainer: {
     width: '100%',
-    height: sh * 0.18,
+    height: 140,
     position: 'relative',
   },
   tourImage: {
@@ -669,136 +727,137 @@ const styles = StyleSheet.create({
   },
   tourBadge: {
     position: 'absolute',
-    top: sh * 0.015,
-    left: sw * 0.025,
+    top: 12,
+    left: 12,
     backgroundColor: '#10B981',
-    paddingHorizontal: sw * 0.02,
-    paddingVertical: sh * 0.006,
-    borderRadius: sw * 0.01,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   tourBadgeText: {
     color: 'white',
-    fontSize: sw * 0.03,
+    fontSize: 12,
     fontWeight: '600',
   },
   tourInfo: {
-    padding: sw * 0.03,
+    padding: 16,
   },
   tourType: {
-    fontSize: sw * 0.04,
+    fontSize: 16,
     fontWeight: '700',
     color: '#111827',
-    marginBottom: sh * 0.01,
+    marginBottom: 8,
   },
   tourPricing: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    marginBottom: sh * 0.01,
+    marginBottom: 8,
     flexWrap: 'wrap',
+    gap: 8,
   },
   tourPrice: {
-    fontSize: sw * 0.04,
+    fontSize: 16,
     fontWeight: '700',
     color: '#10B981',
-    flexShrink: 1,
   },
   tourOriginalPrice: {
-    fontSize: sw * 0.03,
+    fontSize: 13,
     color: '#6B7280',
     textDecorationLine: 'line-through',
-    marginLeft: sw * 0.015,
-    flexShrink: 1,
   },
   discountBadge: {
     backgroundColor: '#EC4899',
-    paddingHorizontal: sw * 0.015,
-    paddingVertical: sh * 0.003,
-    borderRadius: sw * 0.01,
-    marginLeft: sw * 0.02,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
   discountText: {
     color: 'white',
-    fontSize: sw * 0.03,
+    fontSize: 12,
     fontWeight: '600',
   },
   tourTags: {
     flexDirection: 'row',
-    marginBottom: sh * 0.015,
+    marginBottom: 10,
+    gap: 8,
+    flexWrap: 'wrap',
   },
   tourTag: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#E0F2FE',
-    borderRadius: sw * 0.02,
-    paddingHorizontal: sw * 0.02,
-    paddingVertical: sh * 0.006,
-    marginRight: sw * 0.02,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    gap: 4,
   },
   tourTagText: {
-    fontSize: sw * 0.03,
-    color: '#10B981',
-    marginLeft: sw * 0.01,
+    fontSize: 12,
+    color: '#3B82F6',
+    fontWeight: '500',
   },
   tourDescription: {
-    fontSize: sw * 0.035,
+    fontSize: 14,
     color: '#6B7280',
-    lineHeight: sh * 0.025,
+    lineHeight: 20,
   },
   reviewsSection: {
-    marginBottom: sh * 0.025,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
   },
   reviewsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: sh * 0.02,
+    marginBottom: 16,
   },
   seeMoreText: {
-    fontSize: sw * 0.035,
+    fontSize: 15,
     color: '#3B82F6',
-    textDecorationLine: 'underline',
+    fontWeight: '600',
   },
   ratingDisplay: {
     alignItems: 'center',
-    marginBottom: sh * 0.02,
+    marginBottom: 16,
   },
   largeRating: {
-    fontSize: sw * 0.12,
+    fontSize: 48,
     fontWeight: '700',
     color: '#EC4899',
   },
   starsRow: {
     flexDirection: 'row',
-    marginTop: sh * 0.01,
+    marginTop: 8,
+    gap: 4,
   },
   reviewCount: {
-    fontSize: sw * 0.035,
+    fontSize: 15,
     color: '#6B7280',
-    marginTop: sh * 0.006,
+    marginTop: 4,
   },
   reviewItem: {
     backgroundColor: '#F9FAFB',
-    borderRadius: sw * 0.03,
-    padding: sw * 0.04,
-    marginBottom: sh * 0.015,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
   reviewAuthor: {
-    fontSize: sw * 0.04,
+    fontSize: 16,
     fontWeight: '600',
     color: '#111827',
-    marginBottom: sh * 0.006,
+    marginBottom: 4,
   },
   date: {
-    fontSize: sw * 0.03,
+    fontSize: 13,
     color: '#9CA3AF',
-    marginBottom: sh * 0.01,
+    marginBottom: 8,
   },
   reviewText: {
-    fontSize: sw * 0.035,
+    fontSize: 15,
     color: '#374151',
-    lineHeight: sh * 0.025,
+    lineHeight: 22,
   },
   bottomSpacing: {
     height: sh * 0.15, // Increased from 0.12 to 0.15 for better chatbot positioning
@@ -833,24 +892,27 @@ const styles = StyleSheet.create({
   },
   bookNowSection: {
     backgroundColor: 'white',
-    paddingHorizontal: sw * 0.05,
-    paddingVertical: sh * 0.02,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 20,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
   },
   bookNowButton: {
-    backgroundColor: '#10B981',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: sh * 0.02,
-    borderRadius: sw * 0.03,
-    gap: sw * 0.02,
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   bookNowButtonText: {
     color: 'white',
-    fontSize: sw * 0.05,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  bookNowGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 10,
   },
 });
 

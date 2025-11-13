@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, Dimensions, ScrollView, ImageBackground } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Search, Bell, Percent, Stamp, Play, Gift, Grid3x3 } from 'lucide-react-native';
+import { Search, Bell, Percent, Stamp, Play, Gift, Grid3x3, Crown } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
+import { getFeaturedPromotions, getPromotionById } from '../mockdata/mockPromotions';
+import { getMockEnhancedHotel } from '../mockdata/mockEnhancedHotels';
 
 const { width } = Dimensions.get('window');
 
@@ -12,23 +14,8 @@ const HomeScreen: React.FC = () => {
 	const [activeQuickAction, setActiveQuickAction] = useState('Hotel');
 	const [bannerIndex, setBannerIndex] = useState(0);
 
-	// Mock data for banners
-	const banners = [
-		{
-			id: '1',
-			title: 'VIETNAM CULTURAL INDUSTRIES SHOW 2024',
-			subtitle: 'July 11th - 13th, 2024',
-			location: 'WORLD TRADE CENTER',
-			image: require('../../assets/hanoi.jpg'),
-		},
-		{
-			id: '2',
-			title: 'Explore Amazing Destinations',
-			subtitle: 'Discover Vietnam',
-			location: 'Multiple Locations',
-			image: require('../../assets/hoian.jpg'),
-		},
-	];
+	
+	const banners = getFeaturedPromotions();
 
 	// Mock trending destinations
 	const trendingDestinations = [
@@ -106,7 +93,17 @@ const HomeScreen: React.FC = () => {
 					scrollEventThrottle={16}
 				>
 					{banners.map((banner) => (
-						<View key={banner.id} style={styles.bannerSlide}>
+						<TouchableOpacity
+							key={banner.id}
+							style={styles.bannerSlide}
+							activeOpacity={0.9}
+							onPress={() => {
+								const promotion = getPromotionById(banner.id);
+								if (promotion) {
+									(navigation as any).navigate('PromotionDetailScreen', { promotion });
+								}
+							}}
+						>
 							<Image 
 								source={banner.image} 
 								style={styles.bannerImage}
@@ -119,7 +116,7 @@ const HomeScreen: React.FC = () => {
 									<Text style={styles.bannerLocation}>{banner.location}</Text>
 								</View>
 							</View>
-						</View>
+						</TouchableOpacity>
 					))}
 				</ScrollView>
 				<View style={styles.bannerDots}>
@@ -143,7 +140,7 @@ const HomeScreen: React.FC = () => {
 				onPress={() => (navigation as any).navigate('FeedScreen')}
 			>
 				<View style={[styles.hubIconContainer, { backgroundColor: '#50C878' }]}>
-					<Grid3x3 size={24} color="#FFFFFF" />
+					<Grid3x3 size={20} color="#FFFFFF" />
 				</View>
 				<Text style={styles.hubCardTitle}>New Feed</Text>
 			</TouchableOpacity>
@@ -154,9 +151,20 @@ const HomeScreen: React.FC = () => {
 				onPress={() => (navigation as any).navigate('StampCollectionScreen')}
 			>
 				<View style={[styles.hubIconContainer, { backgroundColor: '#FF6B9D' }]}>
-					<Stamp size={24} color="#FFFFFF" />
+					<Stamp size={20} color="#FFFFFF" />
 				</View>
 				<Text style={styles.hubCardTitle}>Stamp Collection</Text>
+			</TouchableOpacity>
+
+			<TouchableOpacity 
+				style={styles.hubCard}
+				activeOpacity={0.8}
+				onPress={() => (navigation as any).navigate('PromotionScreen')}
+			>
+				<View style={[styles.hubIconContainer, { backgroundColor: '#F59E0B' }]}>
+					<Percent size={20} color="#FFFFFF" />
+				</View>
+				<Text style={styles.hubCardTitle}>Promotion</Text>
 			</TouchableOpacity>
 
 			<TouchableOpacity 
@@ -165,7 +173,7 @@ const HomeScreen: React.FC = () => {
 				onPress={() => (navigation as any).navigate('ContentScreen')}
 			>
 				<View style={[styles.hubIconContainer, { backgroundColor: '#50C878' }]}>
-					<Play size={24} color="#FFFFFF" />
+					<Play size={20} color="#FFFFFF" />
 				</View>
 				<Text style={styles.hubCardTitle}>Content Hub</Text>
 			</TouchableOpacity>
@@ -176,9 +184,20 @@ const HomeScreen: React.FC = () => {
 				onPress={() => (navigation as any).navigate('RewardHub')}
 			>
 				<View style={[styles.hubIconContainer, { backgroundColor: '#FF6B9D' }]}>
-					<Gift size={24} color="#FFFFFF" />
+					<Gift size={20} color="#FFFFFF" />
 				</View>
 				<Text style={styles.hubCardTitle}>Reward Hub</Text>
+			</TouchableOpacity>
+
+			<TouchableOpacity 
+				style={styles.hubCard}
+				activeOpacity={0.8}
+				onPress={() => (navigation as any).navigate('MembershipScreen')}
+			>
+				<View style={[styles.hubIconContainer, { backgroundColor: '#8B5CF6' }]}>
+					<Crown size={20} color="#FFFFFF" />
+				</View>
+				<Text style={styles.hubCardTitle}>Membership</Text>
 			</TouchableOpacity>
 			</View>
 
@@ -200,6 +219,15 @@ const HomeScreen: React.FC = () => {
 							key={destination.id} 
 							style={styles.destinationCard}
 							activeOpacity={0.9}
+							onPress={() => {
+								// Navigate to HotelDetailScreen with mock hotel data
+								const mockHotel = getMockEnhancedHotel(`hotel_${destination.id}`, { lat: 21.0285, lng: 105.8542 });
+								(navigation as any).navigate('HotelDetailScreen', {
+									hotelId: `hotel_${destination.id}`,
+									hotelData: mockHotel,
+									coordinates: { lat: 21.0285, lng: 105.8542 },
+								});
+							}}
 						>
 							<Image 
 								source={destination.image} 
@@ -233,7 +261,16 @@ const HomeScreen: React.FC = () => {
 							key={hotel.id} 
 							style={styles.hotelCard}
 							activeOpacity={0.9}
-							onPress={() => (navigation as any).navigate('SearchHotelResult', { city: hotel.name })}
+							onPress={() => {
+								// Navigate to HotelDetailScreen with mock hotel data
+								const mockHotel = getMockEnhancedHotel(`hotel_${hotel.id}`, { lat: 21.0285, lng: 105.8542 });
+								(navigation as any).navigate('HotelDetailScreen', {
+									hotelId: `hotel_${hotel.id}`,
+									hotelData: mockHotel,
+									coordinates: { lat: 21.0285, lng: 105.8542 },
+									price: 1500000,
+								});
+							}}
 						>
 							<Image 
 								source={hotel.image} 
@@ -249,7 +286,7 @@ const HomeScreen: React.FC = () => {
 				</ScrollView>
 			</View>
 
-				<View style={{ height: 100 }} />
+				<View style={{ height: 160 }} />
 			</ScrollView>
 		</ImageBackground>
 	);
@@ -434,38 +471,39 @@ const styles = StyleSheet.create({
 		flexWrap: 'wrap',
 		paddingHorizontal: 16,
 		marginBottom: 20,
-		gap: 10,
+		gap: 8,
 		justifyContent: 'space-between',
 	},
 	hubCard: {
-		width: '48%',
+		width: (width - 48) / 3, // 3 cards per row: (screen width - 32 padding - 16 gap) / 3
 		backgroundColor: '#FFFFFF',
-		borderRadius: 14,
+		borderRadius: 16,
 		padding: 12,
 		borderWidth: 1,
-		borderColor: '#F0F0F0',
+		borderColor: '#E5E7EB',
 		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 1 },
-		shadowOpacity: 0.04,
-		shadowRadius: 2,
-		elevation: 1,
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.06,
+		shadowRadius: 4,
+		elevation: 2,
 		alignItems: 'center',
 		justifyContent: 'center',
+		minHeight: 90,
 	},
 	hubIconContainer: {
-		width: 48,
-		height: 48,
-		borderRadius: 24,
+		width: 44,
+		height: 44,
+		borderRadius: 22,
 		justifyContent: 'center',
 		alignItems: 'center',
 		marginBottom: 8,
 	},
 	hubCardTitle: {
-		fontSize: 12,
+		fontSize: 11,
 		fontWeight: '600',
 		color: '#111827',
 		textAlign: 'center',
-		lineHeight: 16,
+		lineHeight: 14,
 	},
 	sectionContainer: {
 		marginBottom: 24,

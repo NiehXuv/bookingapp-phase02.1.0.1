@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Alert, ScrollView, Modal, Dimensions, FlatList, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Alert, ScrollView, Modal, Dimensions, FlatList, RefreshControl, TextInput, ImageBackground } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { Feather, MaterialIcons, Ionicons } from '@expo/vector-icons';
@@ -8,6 +8,7 @@ import userProfileService, { UserProfile } from '../services/userProfileService'
 import savedContentService from '../services/savedContentService';
 import { ContentItem } from '../types/content';
 import bookingService, { Booking } from '../services/bookingService';
+import postService, { Post, PostData } from '../services/postService';
 
 interface BookingsResponse {
   bookings: Booking[];
@@ -48,6 +49,19 @@ const ProfileScreen: React.FC = () => {
   const [hasBookingError, setHasBookingError] = useState(false);
   const [bookingErrorMessage, setBookingErrorMessage] = useState('');
 
+  // Posts state
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [isLoadingPosts, setIsLoadingPosts] = useState(false);
+  const [hasPostError, setHasPostError] = useState(false);
+  const [postErrorMessage, setPostErrorMessage] = useState('');
+  const [showPostModal, setShowPostModal] = useState(false);
+  const [postContent, setPostContent] = useState('');
+  const [postImageUrl, setPostImageUrl] = useState('');
+  const [postLocation, setPostLocation] = useState('');
+  const [isPosting, setIsPosting] = useState(false);
+  const [showDeletePostModal, setShowDeletePostModal] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+
   // Modal state for removing saved content
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [selectedContent, setSelectedContent] = useState<ContentItem | null>(null);
@@ -62,6 +76,7 @@ const ProfileScreen: React.FC = () => {
       fetchUserProfile();
       fetchSavedContent();
       fetchBookings();
+      fetchPosts();
     } else {
       console.log('No token available, setting error state');
       setHasError(true);
@@ -192,14 +207,111 @@ const ProfileScreen: React.FC = () => {
     }
   };
 
+  const fetchPosts = async () => {
+    if (!token) {
+      console.log('No token available for posts fetch');
+      setHasPostError(true);
+      setPostErrorMessage('Authentication token not available');
+      return;
+    }
+    
+    console.log('Fetching posts with token:', token.substring(0, 20) + '...');
+    setIsLoadingPosts(true);
+    try {
+      const response = await postService.getAllPosts();
+      console.log('Posts response:', response);
+      
+      if (response && response.posts && Array.isArray(response.posts)) {
+        console.log('Posts data found:', response.posts.length, 'posts');
+        setPosts(response.posts);
+        setHasPostError(false);
+      } else {
+        console.log('No posts data received, using empty array');
+        setPosts([]);
+        setHasPostError(false);
+      }
+    } catch (error: any) {
+      console.error('Error fetching posts:', error);
+      setHasPostError(true);
+      setPostErrorMessage(error.message || 'Failed to load posts');
+      setPosts([]);
+    } finally {
+      setIsLoadingPosts(false);
+    }
+  };
+
+  const handleCreatePost = async () => {
+    if (!postContent.trim()) {
+      setErrorModalMessage('Please enter some content for your post');
+      setShowErrorModal(true);
+      return;
+    }
+
+    if (!token) {
+      setErrorModalMessage('Authentication required. Please log in again.');
+      setShowErrorModal(true);
+      return;
+    }
+
+    setIsPosting(true);
+    try {
+      const postData: PostData = {
+        content: postContent.trim(),
+        imageUrl: postImageUrl.trim() || undefined,
+        location: postLocation.trim() || undefined,
+      };
+
+      await postService.createPost(postData);
+      
+      // Clear form
+      setPostContent('');
+      setPostImageUrl('');
+      setPostLocation('');
+      setShowPostModal(false);
+      
+      // Refresh posts
+      await fetchPosts();
+    } catch (error: any) {
+      console.error('Error creating post:', error);
+      setErrorModalMessage(error.message || 'Failed to create post. Please try again.');
+      setShowErrorModal(true);
+    } finally {
+      setIsPosting(false);
+    }
+  };
+
+  const handleDeletePost = async (post: Post) => {
+    setSelectedPost(post);
+    setShowDeletePostModal(true);
+  };
+
+  const confirmDeletePost = async () => {
+    if (!selectedPost || !token) return;
+    
+    try {
+      await postService.deletePost(selectedPost.postId);
+      // Remove from local state
+      setPosts(prev => prev.filter(post => post.postId !== selectedPost.postId));
+      setShowDeletePostModal(false);
+      setSelectedPost(null);
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      setErrorModalMessage('Failed to delete post. Please try again.');
+      setShowErrorModal(true);
+    }
+  };
+
   const retryFetch = () => {
     setHasError(false);
     setErrorMessage('');
     setHasBookingError(false);
     setBookingErrorMessage('');
+    setHasPostError(false);
+    setPostErrorMessage('');
     fetchUserProfile();
     fetchSavedContent();
     fetchBookings();
+    fetchPosts();
   };
 
   const handleRemoveSavedContent = async (content: ContentItem) => {
@@ -388,7 +500,129 @@ const ProfileScreen: React.FC = () => {
       case 'plan':
         return (
           <View style={styles.tabContent}>
-            <Text style={styles.tabPlaceholder}>Your travel plans will appear here</Text>
+            {isLoadingPosts ? (
+              <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>Loading your posts...</Text>
+              </View>
+            ) : hasPostError ? (
+              <View style={styles.errorContainer}>
+                <Feather name="alert-circle" size={48} color="#ff6b6b" />
+                <Text style={styles.errorTitle}>Something went wrong</Text>
+                <Text style={styles.errorMessage}>{postErrorMessage}</Text>
+                <TouchableOpacity style={styles.retryButton} onPress={retryFetch}>
+                  <Text style={styles.retryButtonText}>Try Again</Text>
+                </TouchableOpacity>
+              </View>
+            ) : posts.length > 0 ? (
+              <ScrollView 
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.postsList}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={isLoadingPosts}
+                    onRefresh={fetchPosts}
+                    colors={['#FF6B9D']}
+                    tintColor="#FF6B9D"
+                  />
+                }
+              >
+                <View style={styles.masonryRow}>
+                  <View style={styles.column}>
+                    {posts.filter((_, i) => i % 2 === 0).map((post, idx) => (
+                      <View key={`col0_${post.postId}_${idx}`} style={styles.tile}>
+                        <TouchableOpacity onPress={() => {}}>
+                          <View style={[styles.card, idx % 2 === 0 ? styles.cardTall : styles.cardShort]}>
+                            {post.imageUrl ? (
+                              <Image source={{ uri: post.imageUrl }} style={styles.cardImage} resizeMode="cover" />
+                            ) : (
+                              <View style={styles.cardImagePlaceholder}>
+                                <Feather name="image" size={32} color="#ccc" />
+                              </View>
+                            )}
+                            <TouchableOpacity 
+                              style={styles.removeButton}
+                              onPress={() => handleDeletePost(post)}
+                            >
+                              <Feather name="x" size={16} color="#fff" />
+                            </TouchableOpacity>
+                          </View>
+                        </TouchableOpacity>
+                        <View style={styles.metaRow}>
+                          <Text style={styles.metaTitle} numberOfLines={2}>{post.content}</Text>
+                          {post.location && (
+                            <Text style={styles.metaSource}>{post.location}</Text>
+                          )}
+                        </View>
+                        <View style={styles.postStats}>
+                          <View style={styles.postStatItem}>
+                            <Feather name="heart" size={14} color="#666" />
+                            <Text style={styles.postStatText}>{post.likes}</Text>
+                          </View>
+                          <View style={styles.postStatItem}>
+                            <Feather name="message-circle" size={14} color="#666" />
+                            <Text style={styles.postStatText}>{post.comments}</Text>
+                          </View>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                  <View style={styles.column}>
+                    {posts.filter((_, i) => i % 2 !== 0).map((post, idx) => (
+                      <View key={`col1_${post.postId}_${idx}`} style={styles.tile}>
+                        <TouchableOpacity onPress={() => {}}>
+                          <View style={[styles.card, idx % 2 === 1 ? styles.cardTall : styles.cardShort]}>
+                            {post.imageUrl ? (
+                              <Image source={{ uri: post.imageUrl }} style={styles.cardImage} resizeMode="cover" />
+                            ) : (
+                              <View style={styles.cardImagePlaceholder}>
+                                <Feather name="image" size={32} color="#ccc" />
+                              </View>
+                            )}
+                            <TouchableOpacity 
+                              style={styles.removeButton}
+                              onPress={() => handleDeletePost(post)}
+                            >
+                              <Feather name="x" size={16} color="#fff" />
+                            </TouchableOpacity>
+                          </View>
+                        </TouchableOpacity>
+                        <View style={styles.metaRow}>
+                          <Text style={styles.metaTitle} numberOfLines={2}>{post.content}</Text>
+                          {post.location && (
+                            <Text style={styles.metaSource}>{post.location}</Text>
+                          )}
+                        </View>
+                        <View style={styles.postStats}>
+                          <View style={styles.postStatItem}>
+                            <Feather name="heart" size={14} color="#666" />
+                            <Text style={styles.postStatText}>{post.likes}</Text>
+                          </View>
+                          <View style={styles.postStatItem}>
+                            <Feather name="message-circle" size={14} color="#666" />
+                            <Text style={styles.postStatText}>{post.comments}</Text>
+                          </View>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              </ScrollView>
+            ) : (
+              <View style={styles.emptyStateContainer}>
+                <Feather name="edit-3" size={48} color="#ccc" />
+                <Text style={styles.emptyStateTitle}>No posts yet</Text>
+                <Text style={styles.emptyStateSubtitle}>
+                  Share your travel experiences with the community
+                </Text>
+                <TouchableOpacity 
+                  style={styles.createPostButton}
+                  onPress={() => setShowPostModal(true)}
+                >
+                  <Feather name="plus" size={20} color="#fff" />
+                  <Text style={styles.createPostButtonText}>Create Your First Post</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         );
       case 'booking':
@@ -609,9 +843,14 @@ const ProfileScreen: React.FC = () => {
   );
 
   return (
-    <View style={styles.container}>
-      {/* Header with Avatar */}
-      <View style={styles.header}>
+    <ImageBackground 
+      source={require('../../assets/background.png')} 
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <View style={styles.container}>
+        {/* Header with Avatar */}
+        <View style={styles.header}>
         <TouchableOpacity 
           style={styles.avatarButton}
           onPress={() => setShowProfileSettings(true)}
@@ -671,10 +910,22 @@ const ProfileScreen: React.FC = () => {
         </View>
       )}
 
-      
-
       {/* Tab Content */}
       {renderTabContent()}
+
+      {/* Pill Post Button - Only visible in Your Posts tab when there are posts */}
+      {activeTab === 'plan' && posts.length > 0 && (
+        <View style={styles.pillPostButtonContainer}>
+          <TouchableOpacity 
+            style={styles.pillPostButton}
+            onPress={() => setShowPostModal(true)}
+            activeOpacity={0.8}
+          >
+            <Feather name="plus" size={20} color="#fff" />
+            <Text style={styles.pillPostButtonText}>Add Post</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Profile Settings Modal */}
       {renderProfileSettings()}
@@ -768,14 +1019,162 @@ const ProfileScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
-    </View>
+
+      {/* Create Post Modal */}
+      <Modal
+        visible={showPostModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowPostModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          {/* Modal Header */}
+          <View style={styles.modalHeader}>
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={() => {
+                setShowPostModal(false);
+                setPostContent('');
+                setPostImageUrl('');
+                setPostLocation('');
+              }}
+            >
+              <Feather name="x" size={24} color="#000" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Create Post</Text>
+            <TouchableOpacity 
+              style={styles.postSubmitButton}
+              onPress={handleCreatePost}
+              disabled={isPosting || !postContent.trim()}
+            >
+              <Text style={[
+                styles.postSubmitButtonText,
+                (!postContent.trim() || isPosting) && styles.postSubmitButtonTextDisabled
+              ]}>
+                {isPosting ? 'Posting...' : 'Post'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+            {/* User Info */}
+            <View style={styles.postUserInfo}>
+              <View style={styles.modalAvatar}>
+                <Text style={styles.modalAvatarText}>
+                  {(userProfile?.username || user?.username)?.charAt(0).toUpperCase() || 'U'}
+                </Text>
+              </View>
+              <Text style={styles.postUserName}>{userProfile?.username || user?.username || 'User'}</Text>
+            </View>
+
+            {/* Post Content Input */}
+            <View style={styles.postInputContainer}>
+              <TextInput
+                style={styles.postContentInput}
+                placeholder="What's on your mind?"
+                placeholderTextColor="#999"
+                multiline
+                value={postContent}
+                onChangeText={setPostContent}
+                maxLength={500}
+              />
+              <Text style={styles.characterCount}>
+                {postContent.length}/500
+              </Text>
+            </View>
+
+            {/* Image URL Input */}
+            <View style={styles.postInputContainer}>
+              <Text style={styles.postInputLabel}>Image URL (optional)</Text>
+              <TextInput
+                style={styles.postTextInput}
+                placeholder="https://example.com/image.jpg"
+                placeholderTextColor="#999"
+                value={postImageUrl}
+                onChangeText={setPostImageUrl}
+                keyboardType="url"
+                autoCapitalize="none"
+              />
+            </View>
+
+            {/* Location Input */}
+            <View style={styles.postInputContainer}>
+              <Text style={styles.postInputLabel}>Location (optional)</Text>
+              <TextInput
+                style={styles.postTextInput}
+                placeholder="Where are you?"
+                placeholderTextColor="#999"
+                value={postLocation}
+                onChangeText={setPostLocation}
+              />
+            </View>
+
+            {/* Preview Image */}
+            {postImageUrl && (
+              <View style={styles.imagePreviewContainer}>
+                <Image 
+                  source={{ uri: postImageUrl }} 
+                  style={styles.imagePreview}
+                  resizeMode="cover"
+                />
+                <TouchableOpacity 
+                  style={styles.removeImageButton}
+                  onPress={() => setPostImageUrl('')}
+                >
+                  <Feather name="x" size={20} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Delete Post Confirmation Modal */}
+      <Modal
+        visible={showDeletePostModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowDeletePostModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.removeModalContent}>
+            <Text style={styles.removeModalTitle}>Delete Post</Text>
+            <Text style={styles.removeModalMessage}>
+              Are you sure you want to delete this post? This action cannot be undone.
+            </Text>
+            <View style={styles.removeModalButtons}>
+              <TouchableOpacity 
+                style={[styles.removeModalButton, styles.cancelButton]} 
+                onPress={() => {
+                  setShowDeletePostModal(false);
+                  setSelectedPost(null);
+                }}
+              >
+                <Text style={[styles.removeModalButtonText, styles.cancelButtonText]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.removeModalButton} 
+                onPress={confirmDeletePost}
+              >
+                <Text style={styles.removeModalButtonText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      </View>
+    </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#fff',
     marginBottom: 20, 
   },
   header: {
@@ -1400,6 +1799,168 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Post styles
+  postsList: {
+    paddingHorizontal: 0,
+    paddingBottom: 100,
+  },
+  pillPostButtonContainer: {
+    position: 'absolute',
+    bottom: 100,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  pillPostButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FF6B9D',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  pillPostButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  createPostButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FF6B9D',
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 24,
+    gap: 8,
+    marginTop: 20,
+  },
+  createPostButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  cardImagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  postStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 4,
+    marginTop: 8,
+  },
+  postStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  postStatText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+  },
+  postUserInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 12,
+  },
+  postUserName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  postInputContainer: {
+    paddingHorizontal: 16,
+    marginBottom: 20,
+  },
+  postInputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  postContentInput: {
+    minHeight: 120,
+    fontSize: 16,
+    color: '#111827',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    textAlignVertical: 'top',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  postTextInput: {
+    fontSize: 16,
+    color: '#111827',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  characterCount: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textAlign: 'right',
+    marginTop: 4,
+  },
+  postSubmitButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  postSubmitButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FF6B9D',
+  },
+  postSubmitButtonTextDisabled: {
+    color: '#9CA3AF',
+  },
+  imagePreviewContainer: {
+    marginHorizontal: 16,
+    marginBottom: 20,
+    position: 'relative',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  imagePreview: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#F3F4F6',
+  },
+  cancelButtonText: {
+    color: '#374151',
   },
 });
 

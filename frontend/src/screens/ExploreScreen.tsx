@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -10,13 +10,17 @@ import {
   Dimensions,
   Alert,
   ActivityIndicator,
-  Animated
+  Animated,
+  ImageBackground
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { MaterialIcons, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { googlePlacesService, GooglePlace, GoogleHotel } from '../services/googlePlacesService';
-import { getGooglePlacesApiKey } from '../config/apiConfig';
+// API calls commented out due to billing issues - using mock data instead
+// import { googlePlacesService, GooglePlace, GoogleHotel } from '../services/googlePlacesService';
+// import { getGooglePlacesApiKey } from '../config/apiConfig';
+import { GooglePlace, GoogleHotel } from '../services/googlePlacesService';
+import { getMockHotels, getMockPlaces, getMockTours, MockTour } from '../mockdata';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 
@@ -31,6 +35,7 @@ const ExploreScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [hotels, setHotels] = useState<GoogleHotel[]>([]);
   const [places, setPlaces] = useState<GooglePlace[]>([]);
+  const [tours, setTours] = useState<MockTour[]>([]);
   const [userLocation, setUserLocation] = useState({ lat: 21.0285, lng: 105.8542 }); // Hanoi coordinates
   const webViewRef = useRef<WebView>(null);
   
@@ -44,14 +49,21 @@ const ExploreScreen: React.FC = () => {
 
   const loadInitialData = async () => {
     try {
-      // Load initial hotels and places for Hanoi, Vietnam
-      const [hotelsData, placesData] = await Promise.all([
-        googlePlacesService.searchHotels('Hoan Kiem', 'Hanoi, Vietnam', 50000),
-        googlePlacesService.searchPlaces('attractions', 'Hanoi, Vietnam', 50000)
-      ]);
+      // Using mock data instead of API calls (API billing issues)
+      // TODO: Re-enable API calls when billing is resolved
+      // const [hotelsData, placesData] = await Promise.all([
+      //   googlePlacesService.searchHotels('Hoan Kiem', 'Hanoi, Vietnam', 50000),
+      //   googlePlacesService.searchPlaces('attractions', 'Hanoi, Vietnam', 50000)
+      // ]);
+      
+      // Load mock data
+      const hotelsData = getMockHotels();
+      const placesData = getMockPlaces();
+      const toursData = getMockTours();
       
       setHotels(hotelsData);
       setPlaces(placesData);
+      setTours(toursData);
     } catch (error) {
       console.error('Error loading initial data:', error);
     }
@@ -64,12 +76,26 @@ const ExploreScreen: React.FC = () => {
     try {
       let searchResults: any[] = [];
       
+      // Using mock data instead of API calls (API billing issues)
+      // TODO: Re-enable API calls when billing is resolved
+      // if (activeTab === 'HOTELS') {
+      //   searchResults = await googlePlacesService.searchHotels(searchQuery, 'Hanoi, Vietnam', 50000);
+      //   setHotels(searchResults);
+      // } else if (activeTab === 'PLACES') {
+      //   searchResults = await googlePlacesService.searchPlaces(searchQuery, 'Hanoi, Vietnam', 50000);
+      //   setPlaces(searchResults);
+      // }
+      
+      // Use mock data with search filtering
       if (activeTab === 'HOTELS') {
-        searchResults = await googlePlacesService.searchHotels(searchQuery, 'Hanoi, Vietnam', 50000);
+        searchResults = getMockHotels(searchQuery);
         setHotels(searchResults);
       } else if (activeTab === 'PLACES') {
-        searchResults = await googlePlacesService.searchPlaces(searchQuery, 'Hanoi, Vietnam', 50000);
+        searchResults = getMockPlaces(searchQuery);
         setPlaces(searchResults);
+      } else if (activeTab === 'TICKETS') {
+        searchResults = getMockTours(searchQuery);
+        setTours(searchResults);
       }
       
       if (searchResults.length === 0) {
@@ -239,14 +265,18 @@ const ExploreScreen: React.FC = () => {
     }).start();
   };
 
-  // Google Maps HTML with authentic Google Maps style
-  const mapHTML = `
+  // Map HTML using Leaflet with OpenStreetMap tiles - 100% FREE, no API key required
+  // OpenStreetMap is a free, open-source map service that doesn't require billing
+  // Using Leaflet.js library for map rendering
+  const mapHTML = useMemo(() => `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Google Maps - Vietnam</title>
+      <title>Map - Vietnam</title>
+      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
       <style>
         body { 
           margin: 0; 
@@ -449,122 +479,60 @@ const ExploreScreen: React.FC = () => {
 
       <div id="loading" class="loading">
         <div class="loading-spinner"></div>
-        <div class="loading-text">Loading Google Maps...</div>
+        <div class="loading-text">Loading Map...</div>
       </div>
 
       <script>
         let map;
         let markers = [];
-        let trafficLayer;
-        let transitLayer;
-        let isTrafficVisible = false;
-        let isTransitVisible = false;
-        let searchBox;
-        let currentInfoWindow;
+        let currentPopup = null;
 
-        // Initialize Google Maps
+        // Initialize Leaflet map (OpenStreetMap - Free alternative)
         function initMap() {
-          // Center on Hanoi, Vietnam
-          const hanoi = { lat: 21.0285, lng: 105.8542 };
-          
-          // Create the map with cleaner Google Maps styling
-          map = new google.maps.Map(document.getElementById('map'), {
-            center: hanoi,
-            zoom: 13,
-            mapTypeId: google.maps.MapTypeId.ROADMAP,
-            styles: [
-              {
-                featureType: 'water',
-                elementType: 'geometry',
-                stylers: [{ color: '#e3f2fd' }]
-              },
-              {
-                featureType: 'landscape',
-                elementType: 'geometry',
-                stylers: [{ color: '#fafafa' }]
-              },
-              {
-                featureType: 'road',
-                elementType: 'geometry',
-                stylers: [{ color: '#ffffff' }]
-              },
-              {
-                featureType: 'road',
-                elementType: 'geometry.stroke',
-                stylers: [{ color: '#e0e0e0' }]
-              },
-              {
-                featureType: 'poi',
-                elementType: 'labels.text.fill',
-                stylers: [{ color: '#424242' }]
-              },
-              {
-                featureType: 'poi',
-                elementType: 'labels.text.stroke',
-                stylers: [{ color: '#ffffff' }]
-              },
-              {
-                featureType: 'transit',
-                elementType: 'geometry',
-                stylers: [{ color: '#f5f5f5' }]
-              },
-              {
-                featureType: 'administrative',
-                elementType: 'geometry.stroke',
-                stylers: [{ color: '#bdbdbd' }]
-              },
-              {
-                featureType: 'administrative.land_parcel',
-                elementType: 'geometry.stroke',
-                stylers: [{ color: '#e0e0e0' }]
-              },
-              {
-                featureType: 'poi.business',
-                elementType: 'geometry',
-                stylers: [{ color: '#f5f5f5' }]
-              },
-              {
-                featureType: 'poi.park',
-                elementType: 'geometry',
-                stylers: [{ color: '#e8f5e8' }]
-              }
-            ],
-            mapTypeControl: false,
-            streetViewControl: false,
-            fullscreenControl: false,
-            zoomControl: true,
-            gestureHandling: 'cooperative',
-            backgroundColor: '#fafafa'
-          });
-
-          // Initialize layers
-          trafficLayer = new google.maps.TrafficLayer();
-          transitLayer = new google.maps.TransitLayer();
-
-          // Initialize search box
-          const searchInput = document.getElementById('searchInput');
-          searchBox = new google.maps.places.SearchBox(searchInput);
-
-          // Add hotel markers
-          const hotels = ${JSON.stringify(hotels)};
-          hotels.forEach((hotel, index) => {
-            const marker = new google.maps.Marker({
-              position: { lat: hotel.coordinates.lat, lng: hotel.coordinates.lng },
-              map: map,
-              title: hotel.name,
-              icon: {
-                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(\`
-                  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="14" cy="14" r="12" fill="#EA4335" stroke="white" stroke-width="3"/>
-                    <text x="14" y="19" text-anchor="middle" fill="white" font-size="16" font-weight="bold">🏨</text>
-                  </svg>
-                \`),
-                scaledSize: new google.maps.Size(28, 28)
-              }
+          try {
+            // Center on Hanoi, Vietnam
+            map = L.map('map', {
+              center: [21.0285, 105.8542],
+              zoom: 13,
+              zoomControl: true,
+              attributionControl: true
+            });
+            
+            // Add OpenStreetMap tile layer with multiple subdomains for better performance
+            const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+              maxZoom: 19,
+              subdomains: ['a', 'b', 'c']
+            });
+            
+            // Add the tile layer to map
+            osmLayer.addTo(map);
+            
+            // Fallback: If OSM tiles fail to load, try alternative free tile provider
+            osmLayer.on('tileerror', function(error, tile) {
+              console.warn('OSM tile load error, using fallback');
+              // Remove failed layer and add fallback
+              map.removeLayer(osmLayer);
+              L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors, Tiles style by HOT',
+                maxZoom: 19,
+                subdomains: ['a', 'b', 'c']
+              }).addTo(map);
             });
 
-            const infoWindow = new google.maps.InfoWindow({
-              content: \`
+          // Add hotel markers from mock data
+          const hotels = ${JSON.stringify(hotels)};
+          hotels.forEach((hotel) => {
+            const hotelIcon = L.divIcon({
+              className: 'custom-marker',
+              html: \`<div style="background: #EA4335; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">🏨</div>\`,
+              iconSize: [28, 28],
+              iconAnchor: [14, 14]
+            });
+
+            const marker = L.marker([hotel.coordinates.lat, hotel.coordinates.lng], { icon: hotelIcon })
+              .addTo(map)
+              .bindPopup(\`
                 <div class="info-window">
                   <div class="info-window-content">
                     <div class="info-window-title">\${hotel.name}</div>
@@ -574,52 +542,33 @@ const ExploreScreen: React.FC = () => {
                         <span class="star">★</span>
                         <span class="rating-text">\${hotel.rating}/5</span>
                       </div>
-                      <div class="price-text">from VND \${hotel.price}/night</div>
+                      <div class="price-text">from VND \${hotel.price.toLocaleString()}/night</div>
                     </div>
                     <div class="info-window-actions">
                       <button class="action-button" onclick="getDirections(\${hotel.coordinates.lat}, \${hotel.coordinates.lng})">
                         🚗 Directions
                       </button>
-                      <button class="action-button secondary" onclick="viewDetails('\${hotel.id}')">
-                        📋 Details
-                      </button>
                     </div>
                   </div>
                 </div>
-              \`
-            });
-
-            marker.addListener('click', () => {
-              if (currentInfoWindow) {
-                currentInfoWindow.close();
-              }
-              infoWindow.open(map, marker);
-              currentInfoWindow = infoWindow;
-            });
+              \`);
 
             markers.push(marker);
           });
 
-          // Add place markers
+          // Add place markers from mock data
           const places = ${JSON.stringify(places)};
-          places.forEach((place, index) => {
-            const marker = new google.maps.Marker({
-              position: { lat: place.coordinates.lat, lng: place.coordinates.lng },
-              map: map,
-              title: place.name,
-              icon: {
-                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(\`
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="12" cy="12" r="10" fill="#34A853" stroke="white" stroke-width="2"/>
-                    <text x="12" y="15" text-anchor="middle" fill="white" font-size="12" font-weight="bold">📍</text>
-                  </svg>
-                \`),
-                scaledSize: new google.maps.Size(24, 24)
-              }
+          places.forEach((place) => {
+            const placeIcon = L.divIcon({
+              className: 'custom-marker',
+              html: \`<div style="background: #34A853; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">📍</div>\`,
+              iconSize: [24, 24],
+              iconAnchor: [12, 12]
             });
 
-            const infoWindow = new google.maps.InfoWindow({
-              content: \`
+            const marker = L.marker([place.coordinates.lat, place.coordinates.lng], { icon: placeIcon })
+              .addTo(map)
+              .bindPopup(\`
                 <div class="info-window">
                   <div class="info-window-content">
                     <div class="info-window-title">\${place.name}</div>
@@ -635,139 +584,112 @@ const ExploreScreen: React.FC = () => {
                       <button class="action-button" onclick="getDirections(\${place.coordinates.lat}, \${place.coordinates.lng})">
                         🚗 Directions
                       </button>
-                      <button class="action-button secondary" onclick="viewDetails('\${place.id}')">
-                        📋 Details
+                    </div>
+                  </div>
+                </div>
+              \`);
+
+            markers.push(marker);
+          });
+
+          // Add tour markers from mock data
+          const tours = ${JSON.stringify(tours)};
+          tours.forEach((tour) => {
+            const tourIcon = L.divIcon({
+              className: 'custom-marker',
+              html: \`<div style="background: #EC4899; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">🎫</div>\`,
+              iconSize: [26, 26],
+              iconAnchor: [13, 13]
+            });
+
+            const marker = L.marker([tour.coordinates.lat, tour.coordinates.lng], { icon: tourIcon })
+              .addTo(map)
+              .bindPopup(\`
+                <div class="info-window">
+                  <div class="info-window-content">
+                    <div class="info-window-title">\${tour.name}</div>
+                    <div class="info-window-details">
+                      <div style="margin-bottom: 8px;">\${tour.category} • \${tour.duration}</div>
+                      <div class="info-window-rating">
+                        <span class="star">★</span>
+                        <span class="rating-text">\${tour.rating}/5</span>
+                      </div>
+                      <div class="price-text">VND \${tour.price.toLocaleString()}</div>
+                    </div>
+                    <div class="info-window-actions">
+                      <button class="action-button" onclick="getDirections(\${tour.coordinates.lat}, \${tour.coordinates.lng})">
+                        🚗 Directions
                       </button>
                     </div>
                   </div>
                 </div>
-              \`
-            });
-
-            marker.addListener('click', () => {
-              if (currentInfoWindow) {
-                currentInfoWindow.close();
-              }
-              infoWindow.open(map, marker);
-              currentInfoWindow = infoWindow;
-            });
+              \`);
 
             markers.push(marker);
           });
 
           // Add user location marker
-          const userMarker = new google.maps.Marker({
-            position: { lat: 21.0285, lng: 105.8542 },
-            map: map,
-            title: 'Your Location',
-            icon: {
-              url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(\`
-                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="14" cy="14" r="12" fill="#FBBC04" stroke="white" stroke-width="3"/>
-                  <text x="14" y="19" text-anchor="middle" fill="white" font-size="16" font-weight="bold">👤</text>
-                </svg>
-              \`),
-              scaledSize: new google.maps.Size(28, 28)
-            }
+          const userIcon = L.divIcon({
+            className: 'custom-marker',
+            html: \`<div style="background: #FBBC04; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">👤</div>\`,
+            iconSize: [28, 28],
+            iconAnchor: [14, 14]
           });
+
+          L.marker([21.0285, 105.8542], { icon: userIcon })
+            .addTo(map)
+            .bindPopup('Your Location');
 
           // Add user location circle
-          new google.maps.Circle({
-            strokeColor: '#FBBC04',
-            strokeOpacity: 0.6,
-            strokeWeight: 2,
+          L.circle([21.0285, 105.8542], {
+            color: '#FBBC04',
             fillColor: '#FBBC04',
             fillOpacity: 0.1,
-            map: map,
-            center: { lat: 21.0285, lng: 105.8542 },
             radius: 800
-          });
+          }).addTo(map);
 
-          // Handle search box
-          searchBox.addListener('places_changed', () => {
-            const places = searchBox.getPlaces();
-            if (places.length === 0) return;
-
-            const bounds = new google.maps.LatLngBounds();
-            places.forEach(place => {
-              if (!place.geometry || !place.geometry.location) return;
-              
-              if (place.geometry.viewport) {
-                bounds.union(place.geometry.viewport);
-              } else {
-                bounds.extend(place.geometry.location);
-              }
-            });
-            
-            map.fitBounds(bounds);
-            if (bounds.getNorthEast().equals(bounds.getSouthWest())) {
-              map.setZoom(16);
+            // Hide loading
+            const loadingEl = document.getElementById('loading');
+            if (loadingEl) {
+              loadingEl.style.display = 'none';
             }
-          });
-
-          // Hide loading
-          document.getElementById('loading').style.display = 'none';
-
-          // Add map event listeners
-          map.addListener('click', function(e) {
-            if (currentInfoWindow) {
-              currentInfoWindow.close();
+          } catch (error) {
+            console.error('Error initializing map:', error);
+            const loadingEl = document.getElementById('loading');
+            if (loadingEl) {
+              loadingEl.innerHTML = '<div style="color: #EF4444; text-align: center;">Map failed to load. Please refresh.</div>';
             }
-          });
-
-          map.addListener('zoom_changed', function() {
-            console.log('Zoom level:', map.getZoom());
-          });
+          }
         }
 
-        // Control functions
+        // Control functions (simplified for Leaflet)
         function toggleTraffic() {
           const btn = document.getElementById('trafficBtn');
-          if (isTrafficVisible) {
-            trafficLayer.setMap(null);
-            isTrafficVisible = false;
-            btn.classList.remove('active');
-          } else {
-            trafficLayer.setMap(map);
-            isTrafficVisible = true;
-            btn.classList.add('active');
-          }
+          btn.classList.toggle('active');
+          // Traffic layer not available in free OpenStreetMap
+          alert('Traffic layer requires Google Maps API');
         }
 
         function toggleTransit() {
           const btn = document.getElementById('transitBtn');
-          if (isTransitVisible) {
-            transitLayer.setMap(null);
-            isTransitVisible = false;
-            btn.classList.remove('active');
-          } else {
-            transitLayer.setMap(map);
-            isTransitVisible = true;
-            btn.classList.add('active');
-          }
+          btn.classList.toggle('active');
+          // Transit layer not available in free OpenStreetMap
+          alert('Transit layer requires Google Maps API');
         }
 
         function getCurrentLocation() {
           if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
               (position) => {
-                const pos = {
-                  lat: position.coords.latitude,
-                  lng: position.coords.longitude,
-                };
-                map.setCenter(pos);
-                map.setZoom(15);
+                map.setView([position.coords.latitude, position.coords.longitude], 15);
               },
               () => {
                 // Fallback to Hanoi if geolocation fails
-                map.setCenter({ lat: 21.0285, lng: 105.8542 });
-                map.setZoom(13);
+                map.setView([21.0285, 105.8542], 13);
               }
             );
           } else {
-            // Fallback to Hanoi if geolocation not supported
-            map.setCenter({ lat: 21.0285, lng: 105.8542 });
-            map.setZoom(13);
+            map.setView([21.0285, 105.8542], 13);
           }
         }
 
@@ -779,39 +701,63 @@ const ExploreScreen: React.FC = () => {
           window.open(url, '_blank');
         }
 
-        function viewDetails(id) {
-          console.log('View details for:', id);
-          // You can implement navigation to detail screen here
+        // Initialize map when Leaflet is loaded
+        function tryInitMap() {
+          if (typeof L !== 'undefined' && typeof L.map === 'function') {
+            try {
+              initMap();
+            } catch (error) {
+              console.error('Map initialization error:', error);
+              // Retry after delay
+              setTimeout(tryInitMap, 500);
+            }
+          } else {
+            // Leaflet not loaded yet, wait and retry
+            setTimeout(tryInitMap, 100);
+          }
         }
-
-        // Initialize map when Google Maps API is loaded
-        window.initMap = initMap;
-      </script>
-      
-      <script async defer
-        src="https://maps.googleapis.com/maps/api/js?key=${getGooglePlacesApiKey()}&callback=initMap&libraries=places">
+        
+        // Start initialization
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+          // DOM already loaded
+          setTimeout(tryInitMap, 100);
+        } else {
+          // Wait for DOM to load
+          document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(tryInitMap, 100);
+          });
+        }
+        
+        // Fallback: Try after window load
+        window.addEventListener('load', function() {
+          setTimeout(function() {
+            if (typeof L !== 'undefined' && typeof L.map === 'function' && !map) {
+              tryInitMap();
+            }
+          }, 500);
+        });
       </script>
     </body>
     </html>
-  `;
+  `, [hotels, places, tours]);
 
-  const renderHotelItem = (hotel: GoogleHotel) => (
-    <TouchableOpacity 
-      key={hotel.id} 
-      style={styles.hotelItem}
-      onPress={() => handleHotelPress(hotel)}
-    >
-      {hotel.photos && hotel.photos.length > 0 ? (
-        <Image source={{ uri: hotel.photos[0] }} style={styles.hotelImage} />
-      ) : (
-        <View style={styles.hotelIcon}>
-          <MaterialCommunityIcons 
-            name="bed" 
-            size={24} 
-            color="#3B82F6" 
-          />
-        </View>
-      )}
+  const renderHotelItem = (hotel: GoogleHotel) => {
+    const defaultHotelImage = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800';
+    const imageUri = (hotel.photos && hotel.photos.length > 0) ? hotel.photos[0] : defaultHotelImage;
+    
+    return (
+      <TouchableOpacity 
+        key={hotel.id} 
+        style={styles.hotelItem}
+        onPress={() => handleHotelPress(hotel)}
+      >
+        <Image 
+          source={{ uri: imageUri }} 
+          style={styles.hotelImage}
+          onError={() => {
+            console.log('Failed to load hotel image:', imageUri);
+          }}
+        />
       <View style={styles.hotelInfo}>
         <Text style={styles.hotelName}>{hotel.name}</Text>
         <Text style={styles.hotelLocation}>{hotel.location}</Text>
@@ -831,28 +777,26 @@ const ExploreScreen: React.FC = () => {
         </View>
       </View>
     </TouchableOpacity>
-  );
+    );
+  };
 
-  const renderPlaceItem = (place: GooglePlace) => (
+  const renderPlaceItem = (place: GooglePlace) => {
+    const defaultPlaceImage = 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800';
+    const imageUri = (place.photos && place.photos.length > 0) ? place.photos[0] : defaultPlaceImage;
+    
+    return (
     <TouchableOpacity 
       key={place.id} 
       style={styles.placeItem}
       onPress={() => handlePlacePress(place)}
     >
-      {place.photos && place.photos.length > 0 ? (
-        <Image 
-          source={{ uri: place.photos[0] }} 
-          style={styles.placeImage} 
-        />
-      ) : (
-        <View style={styles.placeIcon}>
-          <MaterialCommunityIcons 
-            name={place.type === 'Lake' ? 'water' : place.type === 'Historical Site' ? 'castle' : 'map-marker'} 
-            size={24} 
-            color="#3B82F6" 
-          />
-        </View>
-      )}
+      <Image 
+        source={{ uri: imageUri }} 
+        style={styles.placeImage}
+        onError={() => {
+          console.log('Failed to load place image:', imageUri);
+        }}
+      />
       <View style={styles.placeInfo}>
         <Text style={styles.placeName}>{place.name}</Text>
         <Text style={styles.placeType}>{formatPlaceType(place.type)}</Text>
@@ -863,19 +807,97 @@ const ExploreScreen: React.FC = () => {
         </View>
       </View>
     </TouchableOpacity>
-  );
+    );
+  };
+
+  const handleTourPress = (tour: MockTour) => {
+    // Navigate to tour detail screen or booking screen
+    (navigation as any).navigate('BookingScreen', {
+      type: 'tour',
+      itemId: tour.id,
+      itemName: tour.name,
+      itemImage: tour.photos?.[0],
+      price: tour.price,
+      currency: tour.currency,
+      additionalData: {
+        duration: tour.duration,
+        category: tour.category,
+        location: tour.location,
+        includes: tour.includes,
+        highlights: tour.highlights
+      }
+    });
+  };
+
+  const renderTourItem = (tour: MockTour) => {
+    const defaultTourImage = 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800';
+    const imageUri = (tour.photos && tour.photos.length > 0) ? tour.photos[0] : defaultTourImage;
+    
+    return (
+      <TouchableOpacity 
+        key={tour.id} 
+        style={styles.tourItem}
+        onPress={() => handleTourPress(tour)}
+      >
+        <Image 
+          source={{ uri: imageUri }} 
+          style={styles.tourImage}
+          onError={() => {
+            console.log('Failed to load tour image:', imageUri);
+          }}
+        />
+      <View style={styles.tourInfo}>
+        <Text style={styles.tourName}>{tour.name}</Text>
+        <View style={styles.tourMeta}>
+          <View style={styles.tourCategory}>
+            <MaterialIcons name="category" size={14} color="#6B7280" />
+            <Text style={styles.tourCategoryText}>{tour.category}</Text>
+          </View>
+          <View style={styles.tourDuration}>
+            <MaterialIcons name="schedule" size={14} color="#6B7280" />
+            <Text style={styles.tourDurationText}>{tour.duration}</Text>
+          </View>
+        </View>
+        <Text style={styles.tourDescription} numberOfLines={2}>{tour.description}</Text>
+        <View style={styles.tourFooter}>
+          <View style={styles.ratingContainer}>
+            <MaterialIcons name="star" size={16} color="#F59E0B" />
+            <Text style={styles.ratingText}>{tour.rating}</Text>
+          </View>
+          <Text style={styles.tourPrice}>VND {tour.price.toLocaleString()}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+    );
+  };
 
   return (
-  <View style={styles.container}>
-      {/* Map Section */}
-      <View style={styles.mapContainer}>
+    <ImageBackground 
+      source={require('../../assets/background.png')} 
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <View style={styles.container}>
+        {/* Map Section */}
+        <View style={styles.mapContainer}>
         <WebView
+          key={`map-${hotels.length}-${places.length}-${tours.length}`}
           ref={webViewRef}
           source={{ html: mapHTML }}
           style={styles.map}
           javaScriptEnabled={true}
           domStorageEnabled={true}
           startInLoadingState={true}
+          allowsInlineMediaPlayback={true}
+          mediaPlaybackRequiresUserAction={false}
+          onError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            console.warn('WebView error: ', nativeEvent);
+          }}
+          onHttpError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            console.warn('WebView HTTP error: ', nativeEvent);
+          }}
           renderLoading={() => (
             <View style={styles.mapLoading}>
               <ActivityIndicator size="large" color="#3B82F6" />
@@ -958,26 +980,36 @@ const ExploreScreen: React.FC = () => {
           </View>
 
           {/* Content List */}
-          <ScrollView style={styles.contentList} showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            style={styles.contentList} 
+            contentContainerStyle={styles.contentListContainer}
+            showsVerticalScrollIndicator={false}
+          >
             {activeTab === 'HOTELS' && hotels.map(renderHotelItem)}
             {activeTab === 'PLACES' && places.map(renderPlaceItem)}
-            {activeTab === 'TICKETS' && (
+            {activeTab === 'TICKETS' && tours.map(renderTourItem)}
+            {activeTab === 'TICKETS' && tours.length === 0 && (
               <View style={styles.comingSoon}>
                 <MaterialCommunityIcons name="ticket" size={48} color="#9CA3AF" />
-                <Text style={styles.comingSoonText}>Tickets & Tours</Text>
-                <Text style={styles.comingSoonSubtext}>Coming soon...</Text>
+                <Text style={styles.comingSoonText}>No Tours Found</Text>
+                <Text style={styles.comingSoonSubtext}>Try a different search</Text>
               </View>
             )}
           </ScrollView>
         </Animated.View>
-  </View>
-);
+      </View>
+    </ImageBackground>
+  );
 };
 
 const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#FCFCFC',
   },
   mapContainer: {
     height: height * 0.4,
@@ -1090,6 +1122,9 @@ const styles = StyleSheet.create({
   contentList: {
     flex: 1,
     paddingHorizontal: 20,
+  },
+  contentListContainer: {
+    paddingBottom: 120,
   },
   hotelItem: {
     flexDirection: 'row',
@@ -1230,6 +1265,82 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#D1D5DB',
     marginTop: 8,
+  },
+  tourItem: {
+    flexDirection: 'row',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    marginBottom: 12,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+    overflow: 'hidden',
+  },
+  tourImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 12,
+    marginRight: 14,
+  },
+  tourIcon: {
+    width: 90,
+    height: 90,
+    borderRadius: 12,
+    backgroundColor: '#FCE7F3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  tourInfo: {
+    flex: 1,
+  },
+  tourName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 6,
+  },
+  tourMeta: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 6,
+  },
+  tourCategory: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  tourCategoryText: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  tourDuration: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  tourDurationText: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  tourDescription: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 8,
+    lineHeight: 18,
+  },
+  tourFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  tourPrice: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#EC4899',
   },
 });
 

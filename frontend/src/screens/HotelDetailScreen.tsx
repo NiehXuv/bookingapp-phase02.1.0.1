@@ -15,7 +15,9 @@ import {
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EnhancedHotel } from '../types/explore';
-import { EnhancedHotelService } from '../services/enhancedHotelService';
+// API service commented out due to billing issues - using mock data instead
+// import { EnhancedHotelService } from '../services/enhancedHotelService';
+import { getMockEnhancedHotel } from '../mockdata/mockEnhancedHotels';
 import ChatbotWrapper from '../components/ChatbotWrapper';
 
 const { width: sw, height: sh } = Dimensions.get('window');
@@ -46,16 +48,20 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
   const loadHotelDetails = async () => {
     try {
       setIsLoading(true);
-      const hotelService = new EnhancedHotelService();
+      
+      // Using mock data instead of API calls (API billing issues)
+      // TODO: Re-enable API calls when billing is resolved
+      // const hotelService = new EnhancedHotelService();
+      // let details: EnhancedHotel;
+      // try {
+      //   details = await hotelService.getHotelDetailsByPlaceId(hotelId, coordinates);
+      // } catch (error) {
+      //   console.log('Falling back to mock data:', error);
+      //   details = await hotelService.getMockHotelDetails(hotelId);
+      // }
 
-      // Try to get enhanced details, fallback to mock data if API fails
-      let details: EnhancedHotel;
-      try {
-        details = await hotelService.getHotelDetailsByPlaceId(hotelId, coordinates);
-      } catch (error) {
-        console.log('Falling back to mock data:', error);
-        details = await hotelService.getMockHotelDetails(hotelId);
-      }
+      // Use mock data directly
+      const details = getMockEnhancedHotel(hotelId, coordinates);
 
       setEnhancedHotel(details);
     } catch (error) {
@@ -93,13 +99,17 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
   };
 
   const renderPhotoCarousel = () => {
+    const defaultImage = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800';
+    
     if (!enhancedHotel?.photos || enhancedHotel.photos.length === 0) {
       return (
         <View style={styles.heroImageContainer}>
-          <View style={styles.placeholderPhoto}>
-            <MaterialIcons name="hotel" size={sw * 0.2} color="#9CA3AF" />
-            <Text style={styles.placeholderText}>No Photos Available</Text>
-          </View>
+          <Image 
+            source={{ uri: defaultImage }} 
+            style={styles.heroImage} 
+            resizeMode="cover"
+            onError={() => console.log('Failed to load default hotel image')}
+          />
         </View>
       );
     }
@@ -115,24 +125,36 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
             const index = Math.round(event.nativeEvent.contentOffset.x / sw);
             setCurrentPhotoIndex(index);
           }}
-          renderItem={({ item }) => (
-            <Image source={{ uri: item }} style={styles.heroImage} resizeMode="cover" />
-          )}
-          keyExtractor={(item, index) => `photo_${index}`}
+          renderItem={({ item }) => {
+            const imageUri = item || defaultImage;
+            return (
+              <Image 
+                source={{ uri: imageUri }} 
+                style={styles.heroImage} 
+                resizeMode="cover"
+                onError={(error) => {
+                  console.log('Failed to load hotel image:', imageUri, error);
+                }}
+              />
+            );
+          }}
+          keyExtractor={(item, index) => `photo_${index}_${item}`}
         />
 
         {/* Photo Indicators - White dots like in the design */}
-        <View style={styles.photoIndicators}>
-          {enhancedHotel.photos.map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.photoIndicator,
-                index === currentPhotoIndex && styles.photoIndicatorActive
-              ]}
-            />
-          ))}
-        </View>
+        {enhancedHotel.photos && enhancedHotel.photos.length > 1 && (
+          <View style={styles.photoIndicators}>
+            {enhancedHotel.photos.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.photoIndicator,
+                  index === currentPhotoIndex && styles.photoIndicatorActive
+                ]}
+              />
+            ))}
+          </View>
+        )}
       </View>
     );
   };
@@ -210,6 +232,17 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
 
   return (
     <View style={styles.container}>
+      {/* Back Button */}
+      <TouchableOpacity 
+        style={styles.backButton}
+        onPress={() => navigation.goBack()}
+        activeOpacity={0.7}
+      >
+        <View style={styles.backButtonContainer}>
+          <MaterialIcons name="arrow-back" size={24} color="#fff" />
+        </View>
+      </TouchableOpacity>
+
       {/* Hero Image Section */}
       {renderPhotoCarousel()}
 
@@ -218,20 +251,27 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
         {/* Hotel Header */}
         <View style={styles.hotelHeader}>
           <Text style={styles.hotelName}>{enhancedHotel.name}</Text>
-          <View style={styles.hotelLocation}>
-            <Text style={styles.hotelAddress}>{enhancedHotel.address}</Text>
-            <TouchableOpacity onPress={getDirections} >
-              <View style={styles.viewMapIcon}><Text style={styles.viewMapText}>View Map</Text></View>
+          
+          {/* Address with View Map Button */}
+          <View style={styles.hotelLocationRow}>
+            <Text style={styles.hotelAddress} numberOfLines={2}>{enhancedHotel.address}</Text>
+            <TouchableOpacity onPress={getDirections} activeOpacity={0.7}>
+              <View style={styles.viewMapButton}>
+                <Text style={styles.viewMapText}>View Map</Text>
+              </View>
             </TouchableOpacity>
           </View>
 
+          {/* Rating */}
           <View style={styles.ratingSection}>
-            <MaterialIcons name="star" size={sw * 0.05} color="#EC4899" />
+            <MaterialIcons name="star" size={20} color="#EC4899" />
             <Text style={styles.ratingText}>{enhancedHotel.rating}</Text>
           </View>
 
-            {/* Main price display - prioritize price from ExploreScreen, then fallback to room price */}
-            <Text style={styles.priceText}>from VND {price ? price.toLocaleString() : (enhancedHotel.roomTypes?.[0]?.price ? enhancedHotel.roomTypes[0].price.toLocaleString() : '1,500,000')}/night</Text>
+          {/* Price */}
+          <Text style={styles.priceText}>
+            from VND {price ? price.toLocaleString() : (enhancedHotel.roomTypes?.[0]?.price ? enhancedHotel.roomTypes[0].price.toLocaleString() : '1,500,000')}/night
+          </Text>
         </View>
 
         {/* Amenities - Only show if available */}
@@ -276,8 +316,8 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
                   <View key={index} style={styles.amenityPill}>
                     <MaterialIcons
                       name={getAmenityIcon(amenity) as any}
-                      size={sw * 0.04}
-                      color="#10B981"
+                      size={18}
+                      color="#3B82F6"
                     />
                     <Text style={styles.amenityPillText}>{amenity}</Text>
                   </View>
@@ -392,6 +432,7 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
               });
             }
           }}
+          activeOpacity={0.8}
         >
           <LinearGradient
             colors={['#FF6B9D', '#FF8E53']}
@@ -399,7 +440,7 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
             end={{ x: 1, y: 0 }}
             style={styles.bookNowGradient}
           >
-            <MaterialIcons name="hotel" size={24} color="white" />
+            <MaterialIcons name="hotel" size={22} color="white" />
             <Text style={styles.bookNowButtonText}>Book Now</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -415,6 +456,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    zIndex: 10,
+  },
+  backButtonContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
   loadingContainer: {
     flex: 1,
@@ -455,34 +515,35 @@ const styles = StyleSheet.create({
   },
   heroImageContainer: {
     width: '100%',
-    height: sh * 0.35, // 40% of screen height
+    height: sh * 0.4,
     position: 'relative',
+    backgroundColor: '#E5E7EB',
   },
   heroImage: {
-    width: sw, // Full screen width
-    height: sh * 0.35,
+    width: sw,
+    height: sh * 0.4,
   },
   photoIndicators: {
     flexDirection: 'row',
     position: 'absolute',
-    bottom: sh * 0.03,
+    bottom: 16,
     left: 0,
     right: 0,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 6,
   },
   photoIndicator: {
-    width: sw * 0.02,
-    height: sw * 0.02,
-    borderRadius: sw * 0.01,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: 'rgba(255,255,255,0.5)',
-    marginHorizontal: sw * 0.01,
   },
   photoIndicatorActive: {
     backgroundColor: 'white',
-    width: sw * 0.03,
-    height: sw * 0.03,
-    borderRadius: sw * 0.015,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   placeholderPhoto: {
     width: '100%',
@@ -499,123 +560,121 @@ const styles = StyleSheet.create({
   contentCard: {
     flex: 1,
     backgroundColor: 'white',
-    marginTop: -sh * 0.02, // Overlap with hero image
-    borderRadius: sw * 0.06,
+    marginTop: -sh * 0.03,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 8,
   },
   hotelHeader: {
-    padding: sw * 0.05,
+    padding: 20,
+    paddingTop: 24,
   },
   hotelName: {
-    fontSize: sw * 0.07,
+    fontSize: 28,
     fontWeight: '800',
     color: '#111827',
-    marginBottom: sh * 0.01,
+    marginBottom: 12,
+    lineHeight: 34,
   },
-  hotelLocation: {
+  hotelLocationRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: sh * 0.01,
+    alignItems: 'flex-start',
+    marginBottom: 16,
+    gap: 12,
   },
   hotelAddress: {
-    fontSize: sw * 0.035,
+    fontSize: 15,
     color: '#6B7280',
-    marginRight: sw * 0.025,
     flex: 1,
+    lineHeight: 20,
+  },
+  viewMapButton: {
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    minWidth: 100,
   },
   viewMapText: {
-    fontSize: sw * 0.035,
+    fontSize: 14,
     color: '#3B82F6',
     fontWeight: '600',
-  },
-  viewMapIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E0F2FE',
-    paddingHorizontal: sw * 0.025,
-    paddingVertical: sh * 0.008,
-    borderRadius: sw * 0.04,
-    marginBottom: sh * 0.015,
-    marginRight: sw * 0.015,
-    minWidth: sw * 0.2,
   },
   ratingSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: sh * 0.01,
+    marginBottom: 12,
+    gap: 6,
   },
   ratingText: {
-    fontSize: sw * 0.04,
-    color: '#6B7280',
-    marginLeft: sw * 0.01,
+    fontSize: 16,
+    color: '#111827',
+    fontWeight: '600',
   },
   priceText: {
-    fontSize: sw * 0.06,
-    fontWeight: '800',
+    fontSize: 22,
+    fontWeight: '700',
     color: '#10B981',
-    marginTop: sh * 0.01,
+    marginTop: 4,
   },
   amenitiesSection: {
-    paddingHorizontal: sw * 0.05,
-    paddingBottom: sh * 0.025,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
   },
   sectionTitle: {
-    fontSize: sw * 0.05,
+    fontSize: 20,
     fontWeight: '700',
     color: '#111827',
-    marginBottom: sh * 0.02,
+    marginBottom: 16,
   },
   amenitiesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginTop: sh * 0.01,
+    gap: 10,
   },
   amenityPill: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#E0F2FE',
-    paddingHorizontal: sw * 0.025,
-    paddingVertical: sh * 0.008,
-    borderRadius: sw * 0.04,
-    marginBottom: sh * 0.015,
-    marginRight: sw * 0.015,
-    minWidth: sw * 0.2,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 8,
   },
   amenityPillText: {
-    fontSize: sw * 0.03,
-    color: '#10B981',
+    fontSize: 14,
+    color: '#3B82F6',
     fontWeight: '600',
-    marginLeft: sw * 0.01,
   },
   aboutSection: {
-    paddingHorizontal: sw * 0.05,
-    paddingBottom: sh * 0.025,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
   },
   aboutText: {
-    fontSize: sw * 0.035,
+    fontSize: 15,
     color: '#6B7280',
-    lineHeight: sh * 0.03,
+    lineHeight: 24,
   },
   roomsSection: {
-    paddingHorizontal: sw * 0.05,
-    paddingBottom: sh * 0.025,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
   },
   roomsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    gap: 12,
     justifyContent: 'space-between',
   },
   roomCard: {
-    width: '48%', // Two columns
+    width: '48%',
     backgroundColor: '#F9FAFB',
-    borderRadius: sw * 0.04,
+    borderRadius: 16,
     overflow: 'hidden',
-    marginBottom: sh * 0.02,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -628,7 +687,7 @@ const styles = StyleSheet.create({
   },
   roomImageContainer: {
     width: '100%',
-    height: sh * 0.18,
+    height: 140,
     position: 'relative',
   },
   roomImage: {
@@ -637,170 +696,168 @@ const styles = StyleSheet.create({
   },
   roomBadge: {
     position: 'absolute',
-    top: sh * 0.015,
-    left: sw * 0.025,
+    top: 12,
+    left: 12,
     backgroundColor: '#10B981',
-    paddingHorizontal: sw * 0.02,
-    paddingVertical: sh * 0.006,
-    borderRadius: sw * 0.01,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   roomBadgeText: {
     color: 'white',
-    fontSize: sw * 0.03,
+    fontSize: 12,
     fontWeight: '600',
   },
   roomInfo: {
-    padding: sw * 0.04,
+    padding: 16,
   },
   roomType: {
-    fontSize: sw * 0.04,
+    fontSize: 16,
     fontWeight: '700',
     color: '#111827',
-    marginBottom: sh * 0.01,
+    marginBottom: 8,
   },
   roomPricing: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    marginBottom: sh * 0.01,
+    marginBottom: 8,
     flexWrap: 'wrap',
+    gap: 8,
   },
   roomPrice: {
-    fontSize: sw * 0.04,
+    fontSize: 16,
     fontWeight: '700',
     color: '#10B981',
-    flexShrink: 1,
   },
   roomOriginalPrice: {
-    fontSize: sw * 0.03,
+    fontSize: 13,
     color: '#6B7280',
     textDecorationLine: 'line-through',
-    marginLeft: sw * 0.015,
-    flexShrink: 1,
   },
   discountBadge: {
     backgroundColor: '#EC4899',
-    paddingHorizontal: sw * 0.015,
-    paddingVertical: sh * 0.003,
-    borderRadius: sw * 0.01,
-    marginLeft: sw * 0.02,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
   discountText: {
     color: 'white',
-    fontSize: sw * 0.03,
+    fontSize: 12,
     fontWeight: '600',
   },
   roomTags: {
     flexDirection: 'row',
-    marginBottom: sh * 0.015,
+    marginBottom: 10,
+    gap: 8,
+    flexWrap: 'wrap',
   },
   roomTag: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F3F4F6',
-    paddingHorizontal: sw * 0.02,
-    paddingVertical: sh * 0.006,
-    borderRadius: sw * 0.025,
-    marginRight: sw * 0.02,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
   },
   roomTagText: {
-    fontSize: sw * 0.03,
+    fontSize: 12,
     color: '#374151',
     fontWeight: '500',
-    marginLeft: sw * 0.01,
   },
   roomDescription: {
-    fontSize: sw * 0.035,
+    fontSize: 14,
     color: '#6B7280',
-    lineHeight: sh * 0.025,
+    lineHeight: 20,
   },
   reviewsSection: {
-    paddingHorizontal: sw * 0.05,
-    paddingBottom: sh * 0.025,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
   },
   reviewsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: sh * 0.02,
+    marginBottom: 16,
   },
   seeMoreText: {
-    fontSize: sw * 0.035,
+    fontSize: 15,
     color: '#3B82F6',
     fontWeight: '600',
   },
   ratingDisplay: {
     alignItems: 'center',
-    marginBottom: sh * 0.02,
+    marginBottom: 16,
   },
   largeRating: {
-    fontSize: sw * 0.12,
+    fontSize: 48,
     fontWeight: '700',
     color: '#EC4899',
   },
   starsRow: {
     flexDirection: 'row',
-    marginTop: sh * 0.01,
+    marginTop: 8,
+    gap: 4,
   },
   reviewCount: {
-    fontSize: sw * 0.035,
+    fontSize: 15,
     color: '#6B7280',
-    marginTop: sh * 0.006,
+    marginTop: 4,
   },
   reviewItem: {
     backgroundColor: '#F9FAFB',
-    borderRadius: sw * 0.03,
-    padding: sw * 0.04,
-    marginBottom: sh * 0.015,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
   reviewAuthor: {
-    fontSize: sw * 0.04,
+    fontSize: 16,
     fontWeight: '600',
     color: '#111827',
-    marginBottom: sh * 0.006,
+    marginBottom: 4,
   },
   reviewDate: {
-    fontSize: sw * 0.03,
+    fontSize: 13,
     color: '#9CA3AF',
-    marginBottom: sh * 0.01,
+    marginBottom: 8,
   },
   reviewText: {
-    fontSize: sw * 0.035,
+    fontSize: 15,
     color: '#374151',
-    lineHeight: sh * 0.025,
+    lineHeight: 22,
   },
   bottomSpacing: {
     height: sh * 0.15, // Increased from 0.12 to 0.15 for better chatbot positioning
   },
   bookNowSection: {
     backgroundColor: 'white',
-    paddingHorizontal: sw * 0.05,
-    paddingVertical: sh * 0.02,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 20,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   bookNowButton: {
-    backgroundColor: '#10B981',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: sh * 0.02,
-    borderRadius: sw * 0.03,
-    gap: sw * 0.02,
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   bookNowButtonText: {
     color: 'white',
-    fontSize: sw * 0.05,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
   },
   bookNowGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: sh * 0.02,
-    borderRadius: sw * 0.03,
-    gap: sw * 0.02,
+    paddingVertical: 16,
+    gap: 10,
   },
 });
 

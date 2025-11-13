@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Modal, Dimensions, Alert, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Modal, Dimensions, Alert, RefreshControl, ImageBackground } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -528,7 +528,11 @@ const InboxScreen: React.FC = () => {
 
   console.log('InboxScreen render, showMessages:', showMessages);
   return (
-    <View style={styles.container}>
+    <ImageBackground 
+      source={require('../../assets/background.png')} 
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Inbox</Text>
@@ -686,14 +690,18 @@ const InboxScreen: React.FC = () => {
 
       {/* Messages Modal */}
       {renderMessagesTab()}
-    </View>
+    </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#FCFCFC',
   },
   header: {
     flexDirection: 'row',

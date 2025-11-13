@@ -5,7 +5,11 @@ import { MaterialCommunityIcons, Feather, Ionicons, MaterialIcons } from '@expo/
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { GeneratedTripPlan } from '../../services/geminiService';
-import { googlePlacesService, GooglePlace } from '../../services/googlePlacesService';
+// API service commented out due to billing issues - using mock data instead
+// import { googlePlacesService, GooglePlace } from '../../services/googlePlacesService';
+import { GooglePlace } from '../../services/googlePlacesService';
+import { getMockPlaceForActivity } from '../../mockdata/mockTripPlans';
+import { getMockPlaces } from '../../mockdata/mockPlaces';
 import { getBackendBaseUrl } from '../../config/apiConfig';
 
 const { width, height } = Dimensions.get('window');
@@ -386,24 +390,22 @@ const PlanningDetailScreen: React.FC = () => {
     const mainDestination = planningData.destinations[0]; // Use the first destination as main
     if (mainDestination) {
       // Search for iconic places in the main destination
-      googlePlacesService.searchPlaces(
-        mainDestination, // Search for the destination name itself
-        `${mainDestination}, Vietnam`,
-        50000
-      ).then(places => {
-        if (places.length > 0 && places[0].photos && places[0].photos.length > 0) {
+      // Using mock data instead of API calls (API billing issues)
+      // TODO: Re-enable API calls when billing is resolved
+      // googlePlacesService.searchPlaces(...)
+      
+      // Use mock data directly
+      const places = getMockPlaces();
+      if (places.length > 0 && places[0].photos && places[0].photos.length > 0) {
           // Use the first photo from the main destination
           setHeaderBackgroundImage(places[0].photos[0]);
           return;
         }
         
         // If no photos from destination search, try searching for "attractions" in the destination
-        googlePlacesService.searchPlaces(
-          `attractions ${mainDestination}`,
-          `${mainDestination}, Vietnam`,
-          50000
-        ).then(attractionPlaces => {
-          if (attractionPlaces.length > 0 && attractionPlaces[0].photos && attractionPlaces[0].photos.length > 0) {
+        // Using mock data instead of API calls
+        const attractionPlaces = getMockPlaces();
+        if (attractionPlaces.length > 0 && attractionPlaces[0].photos && attractionPlaces[0].photos.length > 0) {
             setHeaderBackgroundImage(attractionPlaces[0].photos[0]);
             return;
           }
@@ -426,33 +428,17 @@ const PlanningDetailScreen: React.FC = () => {
               return;
             }
             
-            googlePlacesService.searchPlaces(
-              iconicSearchTerms[index],
-              `${mainDestination}, Vietnam`,
-              50000
-            ).then(iconicPlaces => {
-              if (iconicPlaces.length > 0 && iconicPlaces[0].photos && iconicPlaces[0].photos.length > 0) {
-                setHeaderBackgroundImage(iconicPlaces[0].photos[0]);
-                return;
-              }
-              // Try next iconic search term
-              tryIconicSearch(index + 1);
-            }).catch(error => {
-              console.log(`Could not fetch ${iconicSearchTerms[index]} photos:`, error);
-              // Try next iconic search term
-              tryIconicSearch(index + 1);
-            });
+            // Using mock data instead of API calls
+            const iconicPlaces = getMockPlaces();
+            if (iconicPlaces.length > 0 && iconicPlaces[0].photos && iconicPlaces[0].photos.length > 0) {
+              setHeaderBackgroundImage(iconicPlaces[0].photos[0]);
+              return;
+            }
+            // Try next iconic search term
+            tryIconicSearch(index + 1);
           };
           
           tryIconicSearch(0);
-        }).catch(error => {
-          console.log('Could not fetch destination attraction photos:', error);
-          setHeaderBackgroundFromActivityPhotos();
-        });
-      }).catch(error => {
-        console.log('Could not fetch destination photos:', error);
-        setHeaderBackgroundFromActivityPhotos();
-      });
     } else {
       // If no destinations, fall back to activity photos
       setHeaderBackgroundFromActivityPhotos();
@@ -477,17 +463,11 @@ const PlanningDetailScreen: React.FC = () => {
       if (firstDay.activities && firstDay.activities.length > 0) {
         const firstActivity = firstDay.activities[0];
         // Try to search for a place photo for the first activity
-        googlePlacesService.searchPlaces(
-          firstActivity.activity,
-          `${planningData.destinations.join(', ')}, Vietnam`,
-          50000
-        ).then(places => {
-          if (places.length > 0 && places[0].photos && places[0].photos.length > 0) {
-            setHeaderBackgroundImage(places[0].photos[0]);
-          }
-        }).catch(error => {
-          console.log('Could not fetch header background image:', error);
-        });
+        // Using mock data instead of API calls
+        const places = getMockPlaces();
+        if (places.length > 0 && places[0].photos && places[0].photos.length > 0) {
+          setHeaderBackgroundImage(places[0].photos[0]);
+        }
       }
     }
     
@@ -516,17 +496,11 @@ const PlanningDetailScreen: React.FC = () => {
       const firstActivity = currentDay.activities[0];
       const activityLocation = firstActivity.location || firstActivity.activity;
       
-      googlePlacesService.searchPlaces(
-        activityLocation,
-        `${planningData.destinations.join(', ')}, Vietnam`,
-        50000
-      ).then(places => {
-        if (places.length > 0 && places[0].photos && places[0].photos.length > 0) {
-          setHeaderBackgroundImage(places[0].photos[0]);
-        }
-      }).catch(error => {
-        console.log('Could not fetch day-specific header background:', error);
-      });
+      // Using mock data instead of API calls
+      const places = getMockPlaces();
+      if (places.length > 0 && places[0].photos && places[0].photos.length > 0) {
+        setHeaderBackgroundImage(places[0].photos[0]);
+      }
     }
   };
 
@@ -556,91 +530,47 @@ const PlanningDetailScreen: React.FC = () => {
               }
               
               try {
-                // Search for the place using Google Places API with more specific queries
-                const searchQuery = `${activity.activity} ${activity.location}`;
-                const places = await googlePlacesService.searchPlaces(
-                  searchQuery,
-                  `${planningData.destinations.join(', ')}, Vietnam`,
-                  50000
-                );
+                // Using mock data instead of API calls (API billing issues)
+                // TODO: Re-enable API calls when billing is resolved
+                // const searchQuery = `${activity.activity} ${activity.location}`;
+                // const places = await googlePlacesService.searchPlaces(...);
+                
+                // Use mock data directly
+                const place = getMockPlaceForActivity(activity.activity, activity.location);
                 
                 let placeDetails = null;
-                if (places && places.length > 0) {
-                  const place = places[0];
-                  console.log('🎯 Found place from search:', {
+                if (place) {
+                  console.log('🎯 Found place from mock data:', {
                     name: place.name,
                     placeId: place.id,
                     photosCount: place.photos?.length || 0
                   });
                   
-                  // Get full place details including photos, reviews, and editorial summary
-                  try {
-                    const fullPlaceDetails = await googlePlacesService.getPlaceDetails(place.id);
-                    if (fullPlaceDetails) {
-                      console.log('🎯 Got full place details:', {
-                        name: fullPlaceDetails.name,
-                        photosCount: fullPlaceDetails.photos?.length || 0,
-                        reviewsCount: fullPlaceDetails.reviews?.length || 0,
-                        editorialSummary: fullPlaceDetails.editorialSummary
-                      });
-                      
-                      placeDetails = {
-                        // Use the full place details
-                        ...fullPlaceDetails,
-                        // Ensure critical properties are set
-                        id: fullPlaceDetails.id || place.id || `place-${Math.random().toString(36).substr(2, 9)}`,
-                        name: fullPlaceDetails.name || place.name || activity.location || activity.activity,
-                        type: fullPlaceDetails.type || place.type || 'Place',
-                        coordinates: fullPlaceDetails.coordinates || place.coordinates || { lat: 0, lng: 0 },
-                        rating: fullPlaceDetails.rating || place.rating || 0,
-                        address: fullPlaceDetails.address || place.address || activity.location || 'Location not available',
-                        // Preserve arrays with fallbacks
-                        openingHours: fullPlaceDetails.openingHours || place.openingHours || [],
-                        photos: fullPlaceDetails.photos || place.photos || [],
-                        reviews: fullPlaceDetails.reviews || place.reviews || [],
-                        types: fullPlaceDetails.types || place.types || [],
-                        // Add default arrays for compatibility
-                        amenities: [],
-                        tourOptions: []
-                      } as any;
-                    } else {
-                      // Fallback to search result if getPlaceDetails fails
-                      placeDetails = {
-                        ...place,
-                        // Ensure critical properties are set
-                        id: place.id || `place-${Math.random().toString(36).substr(2, 9)}`,
-                        name: place.name || activity.location || activity.activity,
-                        type: place.type || 'Place',
-                        coordinates: place.coordinates || { lat: 0, lng: 0 },
-                        rating: place.rating || 0,
-                        address: place.address || activity.location || 'Location not available',
-                        // Preserve arrays with fallbacks
-                        openingHours: place.openingHours || [],
-                        photos: place.photos || [],
-                        reviews: place.reviews || [],
-                        types: place.types || [],
-                        // Add default arrays for compatibility
-                        amenities: [],
-                        tourOptions: []
-                      } as any;
-                    }
-                  } catch (detailError) {
-                    console.log('Failed to get full place details, using search result:', detailError);
-                    // Fallback to search result
+                  // Use mock place directly (no need for additional API call)
+                  const fullPlaceDetails = place;
+                  if (fullPlaceDetails) {
+                    console.log('🎯 Got full place details:', {
+                      name: fullPlaceDetails.name,
+                      photosCount: fullPlaceDetails.photos?.length || 0,
+                      reviewsCount: fullPlaceDetails.reviews?.length || 0,
+                      editorialSummary: fullPlaceDetails.editorialSummary
+                    });
+                    
                     placeDetails = {
-                      ...place,
+                      // Use the full place details
+                      ...fullPlaceDetails,
                       // Ensure critical properties are set
-                      id: place.id || `place-${Math.random().toString(36).substr(2, 9)}`,
-                      name: place.name || activity.location || activity.activity,
-                      type: place.type || 'Place',
-                      coordinates: place.coordinates || { lat: 0, lng: 0 },
-                      rating: place.rating || 0,
-                      address: place.address || activity.location || 'Location not available',
+                      id: fullPlaceDetails.id || `place-${Math.random().toString(36).substr(2, 9)}`,
+                      name: fullPlaceDetails.name || activity.location || activity.activity,
+                      type: fullPlaceDetails.type || 'Place',
+                      coordinates: fullPlaceDetails.coordinates || { lat: 0, lng: 0 },
+                      rating: fullPlaceDetails.rating || 0,
+                      address: fullPlaceDetails.address || activity.location || 'Location not available',
                       // Preserve arrays with fallbacks
-                      openingHours: place.openingHours || [],
-                      photos: place.photos || [],
-                      reviews: place.reviews || [],
-                      types: place.types || [],
+                      openingHours: fullPlaceDetails.openingHours || [],
+                      photos: fullPlaceDetails.photos || [],
+                      reviews: fullPlaceDetails.reviews || [],
+                      types: fullPlaceDetails.types || [],
                       // Add default arrays for compatibility
                       amenities: [],
                       tourOptions: []
@@ -1359,11 +1289,9 @@ const PlanningDetailScreen: React.FC = () => {
 
     setIsSearchingLocation(true);
     try {
-      const places = await googlePlacesService.searchPlaces(
-        query,
-        `${planningData.destinations.join(', ')}, Vietnam`,
-        50000
-      );
+      // Using mock data instead of API calls
+      // const places = await googlePlacesService.searchPlaces(...);
+      const places = getMockPlaces();
       
       setLocationSearchResults(places.slice(0, 5)); // Limit to 5 results
       setShowLocationResults(true);

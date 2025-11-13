@@ -4,6 +4,10 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { ArrowLeft, MapPin, Utensils, Activity, Calendar, Award, Share2, Heart } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
+// Stamp dimensions: 304x220 pixels (aspect ratio: 1.382)
+const STAMP_ASPECT_RATIO = 304 / 220; // 1.382
+const STAMP_DETAIL_WIDTH = width - 32; // 16 padding on each side
+const STAMP_DETAIL_HEIGHT = STAMP_DETAIL_WIDTH / STAMP_ASPECT_RATIO; // Maintain stamp aspect ratio
 
 interface Stamp {
 	id: string;
@@ -64,13 +68,18 @@ const StampDetailScreen = () => {
 				</TouchableOpacity>
 			</View>
 
-			<ScrollView showsVerticalScrollIndicator={false}>
+			<ScrollView 
+				showsVerticalScrollIndicator={false}
+				contentContainerStyle={styles.scrollContent}
+			>
 				{/* Stamp Image */}
-				<Image 
-					source={stamp.image} 
-					style={styles.stampImage} 
-					resizeMode="cover" 
-				/>
+				<View style={styles.stampImageContainer}>
+					<Image 
+						source={stamp.image} 
+						style={styles.stampImage} 
+						resizeMode="cover" 
+					/>
+				</View>
 
 				{/* Stamp Content */}
 				<View style={styles.content}>
@@ -192,9 +201,26 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		alignItems: 'center',
 	},
-	stampImage: {
+	scrollContent: {
+		paddingBottom: 100,
+	},
+	stampImageContainer: {
 		width: '100%',
-		height: width * 0.75,
+		alignItems: 'center',
+		paddingHorizontal: 16,
+		paddingTop: 16,
+		paddingBottom: 8,
+	},
+	stampImage: {
+		width: STAMP_DETAIL_WIDTH,
+		height: STAMP_DETAIL_HEIGHT,
+		borderRadius: 12,
+		overflow: 'hidden',
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.15,
+		shadowRadius: 8,
+		elevation: 5,
 	},
 	content: {
 		padding: 16,

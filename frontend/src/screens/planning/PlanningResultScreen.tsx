@@ -5,7 +5,10 @@ import { MaterialCommunityIcons, Feather, Ionicons, MaterialIcons } from '@expo/
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { GeneratedTripPlan } from '../../services/geminiService';
-import { googlePlacesService, GooglePlace } from '../../services/googlePlacesService';
+// API service commented out due to billing issues - using mock data instead
+// import { googlePlacesService, GooglePlace } from '../../services/googlePlacesService';
+import { GooglePlace } from '../../services/googlePlacesService';
+import { getMockPlaceForActivity } from '../../mockdata/mockTripPlans';
 import { getBackendBaseUrl } from '../../config/apiConfig';
 
 const { width, height } = Dimensions.get('window');
@@ -66,15 +69,21 @@ const PlanningResultScreen: React.FC = () => {
           const enhancedDay = await Promise.all(
             day.activities.map(async (activity) => {
               try {
-                // Search for the place using Google Places API
-                const places = await googlePlacesService.searchPlaces(
+                // Using mock data instead of API calls (API billing issues)
+                // TODO: Re-enable API calls when billing is resolved
+                // const places = await googlePlacesService.searchPlaces(
+                //   activity.activity,
+                //   `${planningData.destinations.join(', ')}, Vietnam`,
+                //   50000
+                // );
+                
+                // Use mock data directly
+                const place = getMockPlaceForActivity(
                   activity.activity,
-                  `${planningData.destinations.join(', ')}, Vietnam`,
-                  50000
+                  activity.location
                 );
                 
-                if (places.length > 0) {
-                  const place = places[0]; // Get the best match
+                if (place) {
                   
                   // Ensure all required properties exist with default values
                   const enhancedPlace = {

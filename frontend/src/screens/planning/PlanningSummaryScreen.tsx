@@ -4,7 +4,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
-import geminiService, { PlanningData } from '../../services/geminiService';
+// API service commented out due to billing issues - using mock data instead
+// import geminiService, { PlanningData } from '../../services/geminiService';
+import { PlanningData } from '../../services/geminiService';
+import { generateMockTripPlan } from '../../mockdata/mockTripPlans';
 import { getBackendBaseUrl } from '../../config/apiConfig';
 
 const { width } = Dimensions.get('window');
@@ -59,8 +62,12 @@ const PlanningSummaryScreen: React.FC = () => {
     setIsGenerating(true);
     
     try {
-      // Call Gemini API to generate travel plan
-      const response = await geminiService.generateTripPlan(planningData, token);
+      // Using mock data instead of API calls (API billing issues)
+      // TODO: Re-enable API calls when billing is resolved
+      // const response = await geminiService.generateTripPlan(planningData, token);
+      
+      // Use mock data directly
+      const response = generateMockTripPlan(planningData);
       
       // Save the generated plan to backend
       const saveResponse = await fetch(`${getBackendBaseUrl()}/api/trip-plans`, {

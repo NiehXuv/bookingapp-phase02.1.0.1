@@ -188,26 +188,32 @@ const Step1DestinationScreen: React.FC<Step1DestinationScreenProps> = ({
 
   const toggleDestination = (id: string) => {
     // Only allow one selection at a time
-    setSelectedDestinations(prev => 
-      prev.map(dest => ({
+    setSelectedDestinations(prev => {
+      const updated = prev.map(dest => ({
         ...dest,
         selected: dest.id === id ? !dest.selected : false
-      }))
-    );
-    
-    // Update selected city
-    const destination = selectedDestinations.find(dest => dest.id === id);
-    if (destination) {
-      if (destination.selected) {
-        // Deselecting
+      }));
+      
+      // Update selected city based on the new selection state
+      const destination = updated.find(dest => dest.id === id);
+      if (destination) {
+        if (destination.selected) {
+          // Selecting this destination
+          setSelectedCity(destination);
+          setSearchQuery(destination.address || destination.name);
+        } else {
+          // Deselecting - clear search selection too
+          setSelectedCity(null);
+          setSearchQuery('');
+        }
+      } else {
+        // No destination selected, clear search
         setSelectedCity(null);
         setSearchQuery('');
-      } else {
-        // Selecting
-        setSelectedCity(destination);
-        setSearchQuery(destination.address || destination.name);
       }
-    }
+      
+      return updated;
+    });
   };
 
   const incrementDays = () => setTripDays(prev => Math.min(prev + 1, 30));
@@ -313,27 +319,48 @@ const Step1DestinationScreen: React.FC<Step1DestinationScreenProps> = ({
     setSearchQuery(city.fullName);
     setShowSuggestions(false);
     
-    // Clear any previously selected destination
+    // Clear any previously selected destination from cards
     setSelectedDestinations(prev => 
       prev.map(dest => ({ ...dest, selected: false }))
     );
-    setSelectedCity(null);
+    
+    // Set the selected city from search
+    const selectedCityData: Destination = {
+      id: city.id,
+      name: city.name,
+      image: 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400', // Default image
+      selected: true,
+      address: city.fullName
+    };
+    setSelectedCity(selectedCityData);
     
     console.log('Selected city from search:', city);
   };
 
   const handleNext = () => {
-    // Get the selected destination
+    // Check if a destination is selected from suggested cards
     const selectedDest = selectedDestinations.find(d => d.selected);
     
-    if (!selectedDest) {
+    // Check if a city was selected from search suggestions
+    const selectedFromSearch = selectedCity;
+    
+    // Must select either from suggested cards OR from search suggestions
+    if (!selectedDest && !selectedFromSearch) {
+      setShowValidationModal(true);
+      return;
+    }
+    
+    // Use the selected destination (from cards) or the selected city (from search)
+    const destinationName = selectedDest ? selectedDest.name : (selectedFromSearch ? selectedFromSearch.name : '');
+    
+    if (!destinationName) {
       setShowValidationModal(true);
       return;
     }
     
     // Save destination and trip length data before moving to next step
     const planningData = {
-      destinations: [selectedDest.name],
+      destinations: [destinationName],
       tripDays: tripDays
     };
     
@@ -393,27 +420,46 @@ const Step1DestinationScreen: React.FC<Step1DestinationScreenProps> = ({
                 <FlatList
                   data={citySuggestions}
                   keyExtractor={(item) => item.id}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={styles.suggestionItem}
-                      onPress={() => handleCitySelect(item)}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons 
-                        name="location" 
-                        size={16} 
-                        color={item.type === 'local' ? '#4CBC71' : '#FF6B9D'} 
-                      />
-                      <View style={styles.suggestionTextContainer}>
-                        <Text style={styles.suggestionName}>{item.name}</Text>
-                        <Text style={styles.suggestionCountry}>
-                          {item.country} {item.type === 'api' && '• API'}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  )}
+                  renderItem={({ item }) => {
+                    const isSelected = selectedCity?.name === item.name;
+                    return (
+                      <TouchableOpacity
+                        style={[
+                          styles.suggestionItem,
+                          isSelected && styles.selectedSuggestionItem
+                        ]}
+                        onPress={() => handleCitySelect(item)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons 
+                          name="location" 
+                          size={16} 
+                          color={item.type === 'local' ? '#4CBC71' : '#FF6B9D'} 
+                        />
+                        <View style={styles.suggestionTextContainer}>
+                          <Text style={styles.suggestionName}>{item.name}</Text>
+                          <Text style={styles.suggestionCountry}>
+                            {item.country} {item.type === 'api' && '• API'}
+                          </Text>
+                        </View>
+                        {isSelected && (
+                          <Ionicons name="checkmark-circle" size={20} color="#4CBC71" />
+                        )}
+                      </TouchableOpacity>
+                    );
+                  }}
                   scrollEnabled={false}
                 />
+              </View>
+            )}
+            
+            {/* Show selected city indicator if selected from search */}
+            {selectedCity && !selectedDestinations.find(d => d.selected) && (
+              <View style={styles.selectedCityIndicator}>
+                <Ionicons name="checkmark-circle" size={20} color="#4CBC71" />
+                <Text style={styles.selectedCityText}>
+                  Selected: {selectedCity.name}
+                </Text>
               </View>
             )}
           </View>
@@ -629,6 +675,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#8E8E93',
     marginTop: 2,
+  },
+  selectedSuggestionItem: {
+    backgroundColor: '#F0FDF4',
+    borderLeftWidth: 3,
+    borderLeftColor: '#4CBC71',
+  },
+  selectedCityIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#4CBC71',
+    gap: 8,
+  },
+  selectedCityText: {
+    fontSize: 14,
+    color: '#1C1C1E',
+    fontWeight: '600',
   },
   daysContainer: {
     flexDirection: 'row',
